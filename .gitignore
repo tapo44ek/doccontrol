@@ -13,3 +13,4 @@ test_docs/
 test_docs/*
 /test_docs/*
 */test_docs/*
+logins.py
