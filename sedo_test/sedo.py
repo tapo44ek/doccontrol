@@ -188,7 +188,7 @@ def print_tree(nodes, level=0):
         is_exec = node.get("execution", False)
 
         if is_exec:
-            print(f"{indent}[✓ исполнено]")
+            print(f"{indent}[✓ исполнено], info={node.get('data')}")
         else:
             print('\n')
             print(f"{indent}id={nid}, dl={node.get('dl')}, info={node.get('data')} ")
@@ -201,6 +201,61 @@ def print_tree(nodes, level=0):
         for exec_note in node.get("executions", []):
             print_tree([exec_note], level + 1)
 
+
+
+def build_chain_from_linear_dl(nodes):
+    """
+    Преобразует линейный список резолюций с полем `dl` в структуру для БД.
+    Исполнения встраиваются в executions.
+    Возвращает список элементов с parent_id и списком executions.
+    """
+    result = []
+    stack = []  # каждый элемент — (dl, id)
+
+    last_node_by_dl = {}  # для быстрого поиска родителя по dl
+    id_to_node = {}
+
+    for node in nodes:
+        is_exec = node.get("execution", False)
+
+        if is_exec:
+            # найдем, к какому элементу цепляться (последний на 1 уровень ниже)
+            parent = stack[-1][1] if stack else None
+            if parent:
+                id_to_node[parent].setdefault("executions", []).append({
+                    "data": node.get("data"),
+                    "dl": node.get("dl"),
+                })
+            continue
+
+        # обычная резолюция
+        nid = node.get("id")
+        dl = node.get("dl", 0)
+
+        # определяем родителя
+        parent_id = None
+        for d, pid in reversed(stack):
+            if d < dl:
+                parent_id = pid
+                break
+
+        entry = {
+            "id": nid,
+            "dl": dl,
+            "data": node.get("data"),
+            "parent_id": parent_id,
+            "executions": []
+        }
+
+        result.append(entry)
+        id_to_node[nid] = entry
+
+        # обновляем стек
+        # убираем все уровни ≥ текущего
+        stack = [(d, pid) for d, pid in stack if d < dl]
+        stack.append((dl, nid))
+
+    return result
             
 
 def get_fwd_info(item):
@@ -226,23 +281,70 @@ def get_fwd_info(item):
 
     res_recipients = item.find_all('span', attrs={"class": "to-user-container"})
     recipients = []
-    # res_recipients_ids = []
-    # res_recipients_texts = []
+
     for recipient in res_recipients:
         recipients.append({'sedo_id': recipient.find('span').get('axuiuserid'),
                             'text': recipient.find('span').text,
                             'fio': get_recipient_fio(recipient.find('span').get('axuiuserid')),
-                            'due_date': None,
-                            'modified_date': None,
-                            'closed_date': None,
-                            'overdue_day': None,
-                            'is_control': None,})
+                            })
+
+    control_group = [{'person': None, 
+                      'due_date': None, 
+                      'modified_date': None, 
+                      'closed_date': None, 
+                      'overdue_day': None, 
+                      'is_control': False}]
+    info = {
+        "type": res_type,
+        "date": res_date,
+        "author_id": res_author_id,
+        "recipients": recipients,
+        "controls": control_group
+    }
+
+    return info
+
+
+def get_exec_info(item):
+    """
+    params: item: bs4 object
+    get data from forwardings of documents
+    """
+    res_type = 'Исполнение'
+    res_author = item.find('span', attrs={"class": "resolution-item__author"}).text
+    res_date = item.find('span', attrs={"class": "resolution-item__timestamp"}).text
+    exec_docs = item.find_all('div', attrs={"class": "resolution-item__row"})
+    exec_docs_list = []
+    for exec_doc in exec_docs:
+
+        if exec_doc.a:
+            exec_doc_link = exec_doc.a.get('href')
+            exec_doc_text = exec_doc.a.text.strip()
+            exec_docs_list.append({"doc_link": exec_doc_link, "doc_text": exec_doc_text})
+
+    exec_text = item.find('div', attrs={"class": "resolution-item__row resolution-item__row--text"})
+
+    if exec_text:
+        exec_text = exec_text.text.strip()
+    else:
+        exec_text = None
+
+    
+
+    match = re.search(r'\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}', res_date)
+
+
+    if match:
+        res_date = match.group()
+        res_date = datetime.strptime(res_date, '%d.%m.%Y %H:%M:%S')
+
 
     info = {
-        "type":res_type,
-        "date":res_date,
-        "author_id":res_author_id,
-        "recipients":recipients
+        "type": res_type,
+        "date": res_date,
+        "author": res_author,
+        "exec_text": exec_text,
+        "exec_docs": exec_docs_list
     }
 
     return info
@@ -258,7 +360,6 @@ def get_res_info(item):
 
     match = re.search(r'\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}', res_date)
 
-
     if match:
         res_date = match.group()
         res_date = datetime.strptime(res_date, '%d.%m.%Y %H:%M:%S')
@@ -267,41 +368,24 @@ def get_res_info(item):
             .find('span')\
                 .get('axuiuserid')
 
-
     res_recipients = item.find_all('span', attrs={"class": "to-user-container"})
     recipients = []
-    # res_recipients_ids = []
-    # res_recipients_texts = []
-    # res_recipients_fio = []
-    # res_recipients_dates = []
+
     for recipient in res_recipients:
         recipients.append({'sedo_id': recipient.find('span').get('axuiuserid'),
                             'text': recipient.find('span').text,
                             'fio': get_recipient_fio(recipient.find('span').get('axuiuserid'))})
 
-        # res_recipients_ids.append(recipient.find('span').get('axuiuserid'))
-        # res_recipients_texts.append(recipient.find('span').text)
-
-        # Очковый момент, надо проработать на возможные ошибки
-        # Вообще это бы все переписать на словарь, а не на списки, но потом
-        # res_recipients_fio.append(get_recipient_fio(recipient.find('span').get('axuiuserid')))
-        # Конец очкового момента
-
-
     dues = item.find('div', attrs={'class': 'resolution-item__orders-wrapper'})
-    # print(dues)
     dates = []
     control_group = []
     due_group = []
     if dues is not None:
-        # print('11')
-        # print(res_recipients_texts)
+
         if dues.div.div.div is not None:
-            # print("______________")
             z = 0
-            # print(repr(dues.div.div.div))
             for divs in dues.children:
-                # print(repr(divs))
+
                 if not isinstance(divs, Tag):
                         continue
                 if divs.div.div is None:
@@ -310,38 +394,34 @@ def get_res_info(item):
                     tags = divs.div.div.children
                 for tag in tags:
                     z = z + 1
-                    # if not isinstance(tag, Tag):
-                    #     continue
+
                     if tag.name == 'strong':
                         text = tag.get_text(strip=True)
-                        # print(text)
                         if 'На контроле' in text:
                             current_group = 0
                         elif 'Срок исполнения' in text:
                             current_group = 1
                     elif tag.name == 'br':
                         try:
-                            # print(tag.span.text)
+
                             for fckn_tag in tag.children:
-                                # print(repr(fckn_tag))
+
                                 if 'resolution-executor-history' in fckn_tag.get('class', [''])[0]:
                                     man = parse_control_dates(fckn_tag)
 
                                     if current_group is not None:
-                                        # print("!!! - " + str(res_recipients_texts))
+
                                         if current_group == 0:
                                             for i in range(len(man)):
                                                 man[i]['is_control'] = True
-                                            # control_group.append(man)
-                                            # current_group = None
+
                                         elif current_group == 1:
                                             for i in range(len(man)):
                                                 man[i]['is_control'] = False
-                                            # due_group.append(man)
-                                            # current_group = None
+
                                         for m in man:
                                             control_group.append(m)
-                                        # current_group = None
+
                         except Exception as e:
                             print(e)
                     elif tag.name == 'span' and 'resolution-executor-history' in tag.get('class', [''])[0]:
@@ -349,46 +429,18 @@ def get_res_info(item):
                         man = parse_control_dates(tag)
 
                         if current_group is not None:
-                            # print("!!! - " + str(res_recipients_texts))
+
                             if current_group == 0:
                                 for i in range(len(man)):
                                     man[i]['is_control'] = True
-                                # control_group.append(man)
-                                # current_group = None
+
                             elif current_group == 1:
                                 for i in range(len(man)):
                                     man[i]['is_control'] = False
-                                # due_group.append(man)
-                                # current_group = None
+
                             for m in man:
                                 control_group.append(m)
-                        # current_group = None
-            # print(z)
-    
-    # Проверим результат
-    # str_control_group = ''
-    # str_due_group = ''
-    # if len(control_group) > 0:
-    #     print("🎯 На контроле:")
-    #     for span in control_group:
-    #         str_control_group = str_control_group + span.get_text(strip=True) + '\n'
-    #         print(span.get_text(strip=True))
 
-
-    # for i in range(len(recipients)):
-    #     recipients[i]['due_date'] = None
-    #     recipients[i]['modified_date'] = None
-    #     recipients[i]['closed_date'] = None
-    #     recipients[i]['overdue_day'] = None
-    #     recipients[i]['is_control'] = None
-    #     for j in range(len(control_group)):
-    #         if recipients[i]['fio'] == control_group[j]['person'] and recipients[i]['due_date'] == None:
-    #             # recipients[i]['data'] = control_group[j]['person']
-    #             recipients[i]['due_date'] = control_group[j]['due_date']
-    #             recipients[i]['modified_date'] = control_group[j]['modified_date']
-    #             recipients[i]['closed_date'] = control_group[j]['closed_date']
-    #             recipients[i]['overdue_day'] = control_group[j]['overdue_day']
-    #             recipients[i]['is_control'] = control_group[j]['is_control']
     print(control_group)
     df = pd.DataFrame(recipients)
     df2 = pd.DataFrame(control_group)
@@ -398,25 +450,16 @@ def get_res_info(item):
         # print(df2)
     df_final = df.merge(df2, how="left", left_on='fio', right_on='person')
     df_final['res_date'] = res_date
-    # df.to_excel('test.xlsx')
-        # print(recipients[i])
-    
-
-    # if len(due_group) > 0:
-    #     print("\n📅 Срок исполнения:")
-    #     for span in due_group:
-    #         str_due_group = str_due_group + span.get_text(strip=True) + '\n'
-    #         print(span.get_text(strip=True))
-
 
     info = {
         "type":res_type,
         "date":res_date,
         "author_id":res_author_id,
-        "recipients": recipients
+        "recipients": recipients,
+        "controls": control_group
     }
     print(df_final)
-    return df_final
+    return info
         
         
 
@@ -459,25 +502,30 @@ if __name__ == "__main__":
             if 'rr_fwd' in tr_class:
                 info = get_fwd_info(tr)
             elif 'rr1' in tr_class:
-                # info = get_res_info(tr)
-                df_ex = pd.concat([df_ex, get_res_info(tr)], ignore_index=True)
-        df_ex['id'] = row_id
-        final_df = pd.concat([final_df, df_ex], ignore_index=True)
-        # node['data'] = info
+                info = get_res_info(tr)
+            elif 'rrr5' in tr_class:
+                info = get_exec_info(tr)
+        #         df_ex = pd.concat([df_ex, get_res_info(tr)], ignore_index=True)
+        # df_ex['id'] = row_id
+        # final_df = pd.concat([final_df, df_ex], ignore_index=True)
 
-        # trash_marker = False # Маркер для первых нескольких технических строк
+        node['data'] = info
 
-        # if (row_id is None) & (len(parsed_nodes) == 0):
-        #     trash_marker = True
+        trash_marker = False # Маркер для первых нескольких технических строк
 
-        # if not trash_marker:
-        #     parsed_nodes.append(node)
+        if (row_id is None) & (len(parsed_nodes) == 0):
+            trash_marker = True
+
+        if not trash_marker:
+            parsed_nodes.append(node)
         
-        # trash_marker = False
-    final_df.drop_duplicates(inplace=True)
-    final_df.to_excel('export.xlsx')
+        trash_marker = False
+    # final_df.drop_duplicates(inplace=True)
+    # final_df.to_excel('export.xlsx')
             
     # print_tree(parsed_nodes)
+    from pprint import pprint
+    pprint(build_chain_from_linear_dl(parsed_nodes))
 
 
 
