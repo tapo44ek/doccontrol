@@ -6,6 +6,7 @@ import sys
 import os
 from config import ProjectManagementSettings
 import pandas as pd
+from zoneinfo import ZoneInfo
 
 
 def get_recipient_fio(rec_id :int):
@@ -203,7 +204,7 @@ def print_tree(nodes, level=0):
 
 
 
-def build_chain_from_linear_dl(nodes):
+def build_chain_from_linear_dl(nodes, document_card_id):
     """
     Преобразует линейный список резолюций с полем `dl` в структуру для БД.
     Исполнения встраиваются в executions.
@@ -216,6 +217,8 @@ def build_chain_from_linear_dl(nodes):
     id_to_node = {}
 
     for node in nodes:
+        if not node.get("data"):  # отловит и {}, и None
+            continue
         is_exec = node.get("execution", False)
 
         if is_exec:
@@ -223,8 +226,10 @@ def build_chain_from_linear_dl(nodes):
             parent = stack[-1][1] if stack else None
             if parent:
                 id_to_node[parent].setdefault("executions", []).append({
-                    "data": node.get("data"),
-                    "dl": node.get("dl"),
+                    "author": node.get("data")["author"],
+                    "date": node.get("data")["date"],
+                    "exec_docs": node.get("data")["exec_docs"],
+                    "exec_text": node.get("data")["exec_text"]
                 })
             continue
 
@@ -238,15 +243,23 @@ def build_chain_from_linear_dl(nodes):
             if d < dl:
                 parent_id = pid
                 break
-
+        # print(node.get("data"))
         entry = {
+            "doc_id": document_card_id,
             "id": nid,
             "dl": dl,
-            "data": node.get("data"),
+            "type": node.get("data")["type"],
+            "date": node.get("data")["date"].replace(tzinfo=ZoneInfo("Europe/Moscow")).isoformat(),
+            "author_id": int(node.get("data")["author_id"]),
+            "recipients": node.get("data")["recipients"],
+            "controls": node.get("data")["controls"],
             "parent_id": parent_id,
             "executions": []
         }
 
+        # print("=== ENTRY DEBUG ===")
+        # print(entry)
+        # print("-------------------")
         result.append(entry)
         id_to_node[nid] = entry
 
@@ -319,8 +332,10 @@ def get_exec_info(item):
 
         if exec_doc.a:
             exec_doc_link = exec_doc.a.get('href')
+            match = re.search(r"id=(\d+)", exec_doc_link)
+            doc_id = match.group(1) if match else None
             exec_doc_text = exec_doc.a.text.strip()
-            exec_docs_list.append({"doc_link": exec_doc_link, "doc_text": exec_doc_text})
+            exec_docs_list.append({"doc_id": doc_id, "doc_text": exec_doc_text})
 
     exec_text = item.find('div', attrs={"class": "resolution-item__row resolution-item__row--text"})
 
@@ -341,7 +356,7 @@ def get_exec_info(item):
 
     info = {
         "type": res_type,
-        "date": res_date,
+        "date": datetime.strftime(res_date, "%d.%m.%Y %H:%M:%S"),
         "author": res_author,
         "exec_text": exec_text,
         "exec_docs": exec_docs_list
@@ -525,7 +540,8 @@ if __name__ == "__main__":
             
     # print_tree(parsed_nodes)
     from pprint import pprint
-    pprint(build_chain_from_linear_dl(parsed_nodes))
+    # build_chain_from_linear_dl(parsed_nodes)
+    pprint(build_chain_from_linear_dl(parsed_nodes, 519917990))
 
 
 
