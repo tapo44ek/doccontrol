@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from config import ProjectManagementSettings
 from dateutil.parser import isoparse
 import json
+from pprint import pprint
 
 
 def insert_resolutions_into_db(data :list):
@@ -58,6 +59,64 @@ def insert_resolutions_into_db(data :list):
                 recipients = EXCLUDED.recipients,
                 updated_at = NOW()
         """, rows)
+
+        connection.commit()
+        result = 1
+        return 1
+    except Exception as e:
+        result = e
+    finally:
+        cursor.close()
+        connection.close()
+    return result
+
+
+def insert_document_into_db(doc):
+    connection = psycopg2.connect(
+        host=ProjectManagementSettings.DB_HOST,
+        user=ProjectManagementSettings.DB_USER,
+        password=ProjectManagementSettings.DB_PASSWORD,
+        port=ProjectManagementSettings.DB_PORT,
+        database=ProjectManagementSettings.DB_NAME
+    )
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO documents (
+                sedo_id, date, dgi_number, description,
+                executor_id, executor_fio, executor_company,
+                signed_by_id, signed_by_fio, signed_by_company,
+                answer, recipients
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (sedo_id) DO UPDATE SET
+                date = EXCLUDED.date,
+                dgi_number = EXCLUDED.dgi_number,
+                description = EXCLUDED.description,
+                executor_id = EXCLUDED.executor_id,
+                executor_fio = EXCLUDED.executor_fio,
+                executor_company = EXCLUDED.executor_company,
+                signed_by_id = EXCLUDED.signed_by_id,
+                signed_by_fio = EXCLUDED.signed_by_fio,
+                signed_by_company = EXCLUDED.signed_by_company,
+                answer = EXCLUDED.answer,
+                recipients = EXCLUDED.recipients,
+                updated_at = NOW()
+        """, (
+            doc['sedo_id'],
+            datetime.strptime(doc['date'], "%d.%m.%Y").date(),
+            doc['dgi_number'],
+            doc['description'],
+            int(doc['executor_id']),
+            doc['executor_fio'],
+            doc['executor_company'],
+            int(doc['signed_by_id']),
+            doc['signed_by_fio'],
+            doc['signed_by_company'],
+            json.dumps(doc['answer'], ensure_ascii=False),
+            json.dumps(doc['recipients'], ensure_ascii=False)
+        ))
 
         connection.commit()
         result = 1
@@ -545,12 +604,133 @@ def get_res_info(item):
     }
     # print(df_final)
     return info
+
+
+def get_doc_info_test(document, doc_id):
+    # with open ('./test_docs/4.html', 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
+    doccard_table = document.find('table', attrs={"id": "maintable"})
+    answer_result = []
+    recipients = []
+    result = {
+    "sedo_id": doc_id,
+    "dgi_number": '',
+    "date": '',
+    "signed_by_id": None,
+    "signed_by_fio": '',
+    "signed_by_company": '',
+    "executor_id": None,
+    "executor_fio": '',
+    "executor_company": '',
+    "recipients": recipients,
+    "answer": answer_result,
+    "description": ''
+    }
+    element = doccard_table.find_all('td', attrs={"data-tour":"12"}) # Номер документа
+
+    for item in element:
+        try:
+            result["dgi_number"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+        except Exception as e: pass
+    
+    element = doccard_table.find_all('td', attrs={"data-tour":"13"}) # Дата документа
+
+    for item in element:
+        try:
+            result["date"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"14"}) # Подпись
+
+    for item in element:
+        try:
+            result["signed_by_id"] = item.find('span').get('axuiuserid')
+            result["signed_by_fio"] = item.find('span').strong.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    result["signed_by_company"] = match[0] # выводит: первый
+                else:
+                    try:
+                        result["signed_by_company"] = match[1]
+                    except:
+                        result["signed_by_company"] = 'Not Found'
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"15"}) # Исполнитель
+
+    for item in element:
+        try:
+            result["executor_id"] = item.find('span').get('axuiuserid')
+            result["executor_fio"] = item.find('span').b.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    result["executor_company"] = match[0] # выводит: первый
+                else:
+                    try:
+                        result["executor_company"] = match[1]
+                    except:
+                        result["executor_company"] = 'Not Found'
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"5"}) # На №
+
+    for item in element:
+        try:
+            answers = item.find_all('a')
+            prev_answer_id = 0
+            if answers:
+                for answer in answers:
+                    # print(answer)
+                    answer_id = answer.get('href')
+                    match = re.search(r"id=(\d+)", answer_id)
+                    answer_id = match.group(1) if match else None
+                    answer_text = answer.text.strip()
+                    if prev_answer_id != answer_id:
+                        answer_result.append({"answer_id": answer_id, "answer_text": answer_text})
+                    prev_answer_id = answer_id
+        except Exception as e: pass
+                    
+    element = doccard_table.find_all('td', attrs={"colspan": "3", "class": "td-1 highlightable b_new"})
+
+    for item in element:
+        if item.find('span').get('axuiuserid'):
+            rec_id = item.find('span').get('axuiuserid')
+            rec_fio = item.find('span').strong.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    rec_company = match[0] # выводит: первый
+                else:
+                    try:
+                        rec_company = match[1]
+                    except:
+                        rec_company = 'Not Found'
+            recipients.append({"sedo_id": rec_id, "fio": rec_fio, "company": rec_company})
+
+    try:
+        result["description"] = doccard_table.find('td',
+                                     attrs={"data-tour":"20",
+                                     "class": "highlightable card-annotation-short-content b3"})\
+                                     .text.strip() # Краткое содержание
+    except Exception as e: pass
+
+
+    # pprint(result)
+
+    print(insert_document_into_db(result))
+
+    return
+
         
-        
-def get_test_tree_from_sample():
+def get_test_tree_from_sample(document, doc_id):
     ts = datetime.now()
-    with open ('./test_docs/4.html', 'r') as doccard:
-        document = BeautifulSoup(doccard, 'html.parser')
+    # with open ('./test_docs/4.html', 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
     
 
 # Парсим с найденной кодировкой
@@ -611,9 +791,9 @@ def get_test_tree_from_sample():
     # final_df.to_excel('export.xlsx')
             
     # print_tree(parsed_nodes)
-    from pprint import pprint
+    
     # build_chain_from_linear_dl(parsed_nodes)
-    insert_data = build_chain_from_linear_dl(parsed_nodes, 519917990)
+    insert_data = build_chain_from_linear_dl(parsed_nodes, doc_id)
     print(count)
     print(insert_resolutions_into_db(insert_data))
     print(f'working time: {datetime.now() - ts}')
@@ -621,6 +801,9 @@ def get_test_tree_from_sample():
 
 
 if __name__ == "__main__":
-    get_test_tree_from_sample()
+    # get_test_tree_from_sample()
+    with open ('./test_docs/4.html', 'r') as doccard:
+        document = BeautifulSoup(doccard, 'html.parser')
+    get_doc_info_test(document, 519917990)
 
 
