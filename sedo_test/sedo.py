@@ -2,11 +2,72 @@ from bs4 import BeautifulSoup, Tag
 import re
 from datetime import datetime
 import psycopg2
+from psycopg2.extras import execute_values
 import sys
 import os
 from config import ProjectManagementSettings
 import pandas as pd
 from zoneinfo import ZoneInfo
+from config import ProjectManagementSettings
+from dateutil.parser import isoparse
+import json
+
+
+def insert_resolutions_into_db(data :list):
+    connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+    cursor = connection.cursor()
+
+    rows = []
+    for item in data:
+        row = (
+            item['id'],
+            item.get('parent_id'),
+            item['doc_id'],
+            item['author_id'],
+            isoparse(item['date']),
+            item['dl'],
+            item['type'],
+            json.dumps(item.get('controls', []), ensure_ascii=False),
+            json.dumps(item.get('executions', []), ensure_ascii=False),
+            json.dumps(item.get('recipients', []), ensure_ascii=False)
+        )
+        rows.append(row)
+
+    try:
+        execute_values(cursor, """
+            INSERT INTO public.flat_resolution (
+                id, parent_id, doc_id, author_id, date, dl, type,
+                controls, executions, recipients
+            )
+            VALUES %s
+            ON CONFLICT (id) DO UPDATE SET
+                parent_id = EXCLUDED.parent_id,
+                doc_id = EXCLUDED.doc_id,
+                author_id = EXCLUDED.author_id,
+                date = EXCLUDED.date,
+                dl = EXCLUDED.dl,
+                type = EXCLUDED.type,
+                controls = EXCLUDED.controls,
+                executions = EXCLUDED.executions,
+                recipients = EXCLUDED.recipients,
+                updated_at = NOW()
+        """, rows)
+
+        connection.commit()
+        result = 1
+        return 1
+    except Exception as e:
+        result = e
+    finally:
+        cursor.close()
+        connection.close()
+    return result
 
 
 def get_recipient_fio(rec_id :int):
@@ -398,7 +459,7 @@ def get_res_info(item):
     if dues is not None:
 
         if dues.div.div.div is not None:
-            z = 0
+            # z = 0
             for divs in dues.children:
 
                 if not isinstance(divs, Tag):
@@ -408,7 +469,7 @@ def get_res_info(item):
                 else:
                     tags = divs.div.div.children
                 for tag in tags:
-                    z = z + 1
+                    # z = z + 1
 
                     if tag.name == 'strong':
                         text = tag.get_text(strip=True)
@@ -456,15 +517,24 @@ def get_res_info(item):
                             for m in man:
                                 control_group.append(m)
 
-    print(control_group)
-    df = pd.DataFrame(recipients)
-    df2 = pd.DataFrame(control_group)
-    columns = ["person", "due_date", "modified_date", "closed_date", "overdue_day", "is_control"]
-    if df2.empty:
-        df2 = pd.DataFrame(columns=columns)
+    # print(control_group)
+    if len(control_group) < 1:
+        control_group = [{
+            "person": None,
+            "due_date": None,
+            "modified_date": None,
+            "closed_date": None,
+            "overdue_day": None,
+            "is_control": None
+        }]
+    # df = pd.DataFrame(recipients)
+    # df2 = pd.DataFrame(control_group)
+    # columns = ["person", "due_date", "modified_date", "closed_date", "overdue_day", "is_control"]
+    # if df2.empty:
+    #     df2 = pd.DataFrame(columns=columns)
         # print(df2)
-    df_final = df.merge(df2, how="left", left_on='fio', right_on='person')
-    df_final['res_date'] = res_date
+    # df_final = df.merge(df2, how="left", left_on='fio', right_on='person')
+    # df_final['res_date'] = res_date
 
     info = {
         "type":res_type,
@@ -473,14 +543,12 @@ def get_res_info(item):
         "recipients": recipients,
         "controls": control_group
     }
-    print(df_final)
+    # print(df_final)
     return info
         
         
-
-
-if __name__ == "__main__":
-
+def get_test_tree_from_sample():
+    ts = datetime.now()
     with open ('./test_docs/4.html', 'r') as doccard:
         document = BeautifulSoup(doccard, 'html.parser')
     
@@ -495,6 +563,7 @@ if __name__ == "__main__":
 
     visible_trs = list(filter(is_visible_tr, resolution_div))
     final_df = pd.DataFrame()
+    count = 0
     for tr in visible_trs:
         row_id = tr.get('id')
         dl_attr = tr.get('data-level')
@@ -513,11 +582,14 @@ if __name__ == "__main__":
         node["execution"] = execution
         df_ex = pd.DataFrame()
         info = {}
+        
         if tr_class:
             if 'rr_fwd' in tr_class:
                 info = get_fwd_info(tr)
+                count += 1
             elif 'rr1' in tr_class:
                 info = get_res_info(tr)
+                count += 1
             elif 'rrr5' in tr_class:
                 info = get_exec_info(tr)
         #         df_ex = pd.concat([df_ex, get_res_info(tr)], ignore_index=True)
@@ -541,9 +613,14 @@ if __name__ == "__main__":
     # print_tree(parsed_nodes)
     from pprint import pprint
     # build_chain_from_linear_dl(parsed_nodes)
-    pprint(build_chain_from_linear_dl(parsed_nodes, 519917990))
+    insert_data = build_chain_from_linear_dl(parsed_nodes, 519917990)
+    print(count)
+    print(insert_resolutions_into_db(insert_data))
+    print(f'working time: {datetime.now() - ts}')
+    return    
 
 
+if __name__ == "__main__":
+    get_test_tree_from_sample()
 
-    
-    # print(len(parsed_nodes))
+
