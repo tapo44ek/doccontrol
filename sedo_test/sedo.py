@@ -8,10 +8,194 @@ import os
 from config import ProjectManagementSettings
 import pandas as pd
 from zoneinfo import ZoneInfo
-from config import ProjectManagementSettings
 from dateutil.parser import isoparse
 import json
 from pprint import pprint
+import requests
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait
+
+
+def make_search_doc_data(date_from, fio, sedo_id):
+    date_from = datetime.strftime(date_from, "%d.%m.%Y")
+
+    params = {
+        "type_0": "1",
+        "type_1": "1",
+        "type_4": "1",
+        "type_5": "1",
+        "has_period": "1",
+        "year_from": "2024",
+        "year_to": f"{datetime.now().year}",
+        "org_name": "ДГИГМ",
+        "org": "21",
+        "order_by": "default",
+        "required_text": "",
+        "num": "",
+        "rdate_f": "",
+        "reg_user": "",
+        "reg_user_id": "",
+        "rdate_t": "",
+        "recipient": "",
+        "recipient_id": "",
+        "recipient_group": "",
+        "recipient_group_id": "",
+        "in_number": "",
+        "bound_number": "",
+        "contract_bound_number": "",
+        "recipient_org_id": "0",
+        "cl_out_num": "",
+        "cl_out_date_f": "",
+        "cl_out_date_t": "",
+        "cl_sign": "",
+        "cl_sign_id": "",
+        "cl_sign_group": "",
+        "cl_sign_group_id": "",
+        "cl_executor": "",
+        "cl_executor_id": "",
+        "cl_executor_group": "",
+        "cl_executor_group_id": "",
+        "cl_text": "",
+        "out_number": "",
+        "out_date_f": "",
+        "out_reg_user": "",
+        "out_reg_user_id": "",
+        "out_date_t": "",
+        "author": "",
+        "author_id": "",
+        "author_group": "",
+        "author_group_id": "",
+        "prepared_by": "",
+        "prepared_by_id": "",
+        "prepared_by_org_id": "0",
+        "curator": "",
+        "curator_id": "",
+        "short_content": "",
+        "document_kind": "0",
+        "delivery_type": "",
+        "document_special_kind": "0",
+        "external_id": "",
+        "has_manual_sign": "0",
+        "is_hand_shipping": "0",
+        "sign_type": "0",
+        "is_dsp": "0",
+        "is_control": "0",
+        "is_urgent": "0",
+        "creator": "",
+        "creator_id": "",
+        "memo": "",
+        "send_date_f": "",
+        "send_date_t": "",
+        "info": "",
+        "info_author": "",
+        "info_author_id": "",
+        "info_date_f": "",
+        "info_date_t": "",
+        "og_file_number": "0",
+        "rec_vdelo": "0",
+        "vdelo_date_f": "",
+        "vdelo_date_t": "",
+        "vdelo_prepared": "",
+        "vdelo_prepared_id": "",
+        "vdelo_signed": "",
+        "vdelo_signed_id": "",
+        "vdelo_text": "",
+        "res_type": "0",
+        "res_urgency": "0",
+        "resolution_num": "",
+        "r_rdate_f": f"{date_from}",
+        "resolution_creator": "",
+        "resolution_creator_id": "",
+        "r_rdate_t": "",
+        "resolution_author": "",
+        "resolution_author_id": "",
+        "resolution_author_group": "",
+        "resolution_author_group_id": "",
+        "resolution_author_org_id": "0",
+        "r_special_control": "0",
+        "resolution_behalf": "",
+        "resolution_behalf_id": "",
+        "resolution_acting_author": "",
+        "resolution_acting_author_id": "",
+        "resolution_to": f"{fio}",
+        "resolution_to_id": f"{sedo_id}",
+        "resolution_to_group": "Департамент городского имущества города Москвы",
+        "resolution_to_group_id": "21",
+        "resolution_to_org_id": "0",
+        "res_project_letter": "0",
+        "res_curator": "",
+        "res_curator_id": "",
+        "r_control": "0",
+        "r_control_f": "",
+        "r_control_t": "",
+        "r_otv": "0",
+        "r_dback": "0",
+        "resolution_text": "",
+        "r_ef_reason_category_id": "0",
+        "r_ef_reason_id": "0",
+        "r_is_signed": "0",
+        "r_plus": "0",
+        "r_another_control": "0",
+        "r_oncontrol": "0",
+        "r_oncontrol_f": "",
+        "r_oncontrol_t": "",
+        "unset_control": "0",
+        "unset_control_f": "",
+        "unset_control_t": "",
+        "re_date_f": "",
+        "re_date_t": "",
+        "re_author": "",
+        "re_author_id": "",
+        "re_author_group": "",
+        "re_author_group_id": "",
+        "re_acting_author": "",
+        "re_acting_author_id": "",
+        "re_is_interim": "-1",
+        "re_text": "",
+        "docs_in_execution": "0",
+        "re_doc_org_id": "",
+        "csdr_initiator": "",
+        "csdr_initiator_id": "",
+        "csdr_initiator_group": "",
+        "csdr_initiator_group_id": "",
+        "csdr_start": "0",
+        "csdr_stop": "0",
+        "and[csdr][0]": "0",
+        "participant_name_0": "",
+        "participant_name_0_id": "",
+        "participant_group_0": "",
+        "participant_group_0_id": "",
+        "csdr_has_deadline_0": "0",
+        "csdr_status_0": "0",
+        "csdr_init_date_0_f": "",
+        "csdr_init_date_0_t": "",
+    }
+
+    return params
+
+
+def get_session():
+    
+    s = requests.Session()
+
+    data = {"DNSID": 'wWKtfVYPrUwz4estPdKE9sA',
+            "group_id": "21",
+            "login": ProjectManagementSettings.SEDO_LOG,
+            "user_id": "80742170",
+            "password": ProjectManagementSettings.SEDO_PASS,
+            "token": "",
+            "x": "1"}
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+        'Connection': 'keep-alive', }
+
+    url_auth = 'https://mosedo.mos.ru/auth.php?group_id=21'
+
+    r = s.post(url_auth, data=data, headers=headers, allow_redirects=False)
+
+    DNSID = r.headers['location'].split('DNSID=')[1]
+
+    return s, DNSID
 
 
 def insert_resolutions_into_db(data :list):
@@ -30,7 +214,7 @@ def insert_resolutions_into_db(data :list):
             item['id'],
             item.get('parent_id'),
             item['doc_id'],
-            item['author_id'],
+            int(item['author_id']) if (item['author_id'] is not None) & (item['author_id'] != '') else None,
             isoparse(item['date']),
             item['dl'],
             item['type'],
@@ -108,10 +292,10 @@ def insert_document_into_db(doc):
             datetime.strptime(doc['date'], "%d.%m.%Y").date(),
             doc['dgi_number'],
             doc['description'],
-            int(doc['executor_id']),
+            int(doc['executor_id']) if (doc['executor_id'] is not None) & (doc['executor_id'] != '') else None,
             doc['executor_fio'],
             doc['executor_company'],
-            int(doc['signed_by_id']),
+            int(doc['signed_by_id']) if (doc['signed_by_id'] is not None) & (doc['signed_by_id'] != '') else None,
             doc['signed_by_fio'],
             doc['signed_by_company'],
             json.dumps(doc['answer'], ensure_ascii=False),
@@ -162,7 +346,8 @@ def parse_control_dates(span):
         r'^(.*?)\s+-\s+срок:\s+(\d{2}\.\d{2}\.\d{4})'
         r'(?:\s+-\s+изменен:\s+(\d{2}\.\d{2}\.\d{4}))?'
         r'(?:\s+-\s+снят с контроля:\s+(\d{2}\.\d{2}\.\d{4}))?'
-        r'(?:\s+-\s+просрочено\s+(\d+)\s+(?:день|дня|дней))?$'
+        r'(?:\s+-\s+просрочено\s+(\d+)\s+(?:день|дня|дней))?'
+        r'(?:\s+-\s+(?:осталось\s+\d+\s+(?:день|дня|дней)|сегодня))?$'
     )
     # print(span.get_text())
     people = span.get_text().split('\n')
@@ -170,7 +355,8 @@ def parse_control_dates(span):
     for man in people:
         if man == '':
             continue
-        match = re.match(pattern, man.strip())
+        cleaned = re.sub(r'[\xa0\u202f\u2009]', ' ', man.strip())
+        match = re.match(pattern, cleaned)
 
         if match:
             person = match.group(1)
@@ -178,20 +364,7 @@ def parse_control_dates(span):
             modified_date = match.group(3) or None
             closed_date = match.group(4) or None
             overdue_days = int(match.group(5)) if match.group(5) else None
-            # if 'арапо' in person:
-                # result = {'person': person, 
-                #     'due_date': due_date, 
-                #     'modified_date': modified_date, 
-                #     'closed_date': closed_date, 
-                #     'overdue_day': overdue_days}
 
-                # print(result)
-
-            # print("👤", person)
-            # print("📅 срок:", due_date)
-            # print("🛠 изменен:", modified_date)
-            # print("✅ снят:", closed_date)
-            # print("⏱ просрочено:", overdue_days)
             result.append({'person': person, 
                     'due_date': due_date, 
                     'modified_date': modified_date, 
@@ -370,16 +543,13 @@ def build_chain_from_linear_dl(nodes, document_card_id):
             "dl": dl,
             "type": node.get("data")["type"],
             "date": node.get("data")["date"].replace(tzinfo=ZoneInfo("Europe/Moscow")).isoformat(),
-            "author_id": int(node.get("data")["author_id"]),
+            "author_id": node.get("data")["author_id"],
             "recipients": node.get("data")["recipients"],
             "controls": node.get("data")["controls"],
             "parent_id": parent_id,
             "executions": []
         }
 
-        # print("=== ENTRY DEBUG ===")
-        # print(entry)
-        # print("-------------------")
         result.append(entry)
         id_to_node[nid] = entry
 
@@ -490,6 +660,7 @@ def get_res_info(item):
     params: item: bs4 object
     get data from resolutions of documents
     """
+    
     res_type = 'Резолюция'
     res_date = item.find('span', attrs={"class": "resolution-item__timestamp"}).text
 
@@ -586,14 +757,6 @@ def get_res_info(item):
             "overdue_day": None,
             "is_control": None
         }]
-    # df = pd.DataFrame(recipients)
-    # df2 = pd.DataFrame(control_group)
-    # columns = ["person", "due_date", "modified_date", "closed_date", "overdue_day", "is_control"]
-    # if df2.empty:
-    #     df2 = pd.DataFrame(columns=columns)
-        # print(df2)
-    # df_final = df.merge(df2, how="left", left_on='fio', right_on='person')
-    # df_final['res_date'] = res_date
 
     info = {
         "type":res_type,
@@ -607,6 +770,7 @@ def get_res_info(item):
 
 
 def get_doc_info_test(document, doc_id):
+    # print(f'doc info start for {doc_id}')
     # with open ('./test_docs/4.html', 'r') as doccard:
     #     document = BeautifulSoup(doccard, 'html.parser')
     doccard_table = document.find('table', attrs={"id": "maintable"})
@@ -626,19 +790,33 @@ def get_doc_info_test(document, doc_id):
     "answer": answer_result,
     "description": ''
     }
-    element = doccard_table.find_all('td', attrs={"data-tour":"12"}) # Номер документа
+    element = doccard_table.find_all('td', attrs={"data-tour":"1"}) # Номер документа 12
 
     for item in element:
         try:
             result["dgi_number"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
         except Exception as e: pass
     
-    element = doccard_table.find_all('td', attrs={"data-tour":"13"}) # Дата документа
+    if result["dgi_number"] == '':
+        element = doccard_table.find_all('td', attrs={"data-tour":"12"}) # Номер документа 12
 
+        for item in element:
+            try:
+                result["dgi_number"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+            except Exception as e: pass
+    
+    element = doccard_table.find_all('td', attrs={"data-tour":"2"}) # Дата документа 13
     for item in element:
         try:
             result["date"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
         except Exception as e: pass
+
+    if result['date'] == '':
+        element = doccard_table.find_all('td', attrs={"data-tour":"13"}) # Дата документа 13
+        for item in element:
+            try:
+                result["date"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+            except Exception as e: pass
 
     element = doccard_table.find_all('td', attrs={"data-tour":"14"}) # Подпись
 
@@ -719,22 +897,15 @@ def get_doc_info_test(document, doc_id):
                                      .text.strip() # Краткое содержание
     except Exception as e: pass
 
+    res = insert_document_into_db(result)
 
-    # pprint(result)
-
-    print(insert_document_into_db(result))
-
-    return
+    return res
 
         
 def get_test_tree_from_sample(document, doc_id):
-    ts = datetime.now()
-    # with open ('./test_docs/4.html', 'r') as doccard:
-    #     document = BeautifulSoup(doccard, 'html.parser')
-    
 
-# Парсим с найденной кодировкой
-    # document = BeautifulSoup(raw_data.decode(encoding), 'html.parser')
+    ts = datetime.now()
+
     resolution_div = document.find('div', attrs={"id": "res-lugs"})\
                                 .find('table', attrs={"class": "card s-resolutions-table"})\
                                 .find("tbody").find_all('tr')
@@ -772,9 +943,6 @@ def get_test_tree_from_sample(document, doc_id):
                 count += 1
             elif 'rrr5' in tr_class:
                 info = get_exec_info(tr)
-        #         df_ex = pd.concat([df_ex, get_res_info(tr)], ignore_index=True)
-        # df_ex['id'] = row_id
-        # final_df = pd.concat([final_df, df_ex], ignore_index=True)
 
         node['data'] = info
 
@@ -787,23 +955,78 @@ def get_test_tree_from_sample(document, doc_id):
             parsed_nodes.append(node)
         
         trash_marker = False
-    # final_df.drop_duplicates(inplace=True)
-    # final_df.to_excel('export.xlsx')
-            
-    # print_tree(parsed_nodes)
-    
-    # build_chain_from_linear_dl(parsed_nodes)
+
     insert_data = build_chain_from_linear_dl(parsed_nodes, doc_id)
-    print(count)
-    print(insert_resolutions_into_db(insert_data))
-    print(f'working time: {datetime.now() - ts}')
-    return    
+
+    res = insert_resolutions_into_db(insert_data)
+
+    return res
+
+
+def get_doc_ids(date_from, fio, sedo_id, session, DNSID):
+    
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-User': '?1',
+        'Sec-Fetch-Dest': 'document'
+    }
+    data = make_search_doc_data(date_from, fio, sedo_id)
+    url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
+    r2 = session.post(url_search, data=data, headers=headers)
+    first_soup = BeautifulSoup(r2.text, 'html.parser')
+    pages = first_soup.find('span', attrs={"class": "s-pager__pages"}).find_all('a')
+
+    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+
+    doc_ids = []
+
+    for docs in docs_ids_soap:
+        try:
+            doc_ids.append(docs.get('data-docid'))
+        except: pass
+
+    current_page = 1
+    for page in pages:
+        current_page = current_page + 1
+        first_soup = BeautifulSoup(session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={current_page}', headers=headers).text, 'html.parser')
+        docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+        for docs in docs_ids_soap:
+            try:
+                doc_ids.append(docs.get('data-docid'))
+            except: pass
+
+
+    return doc_ids
+
+
+def process_doc(session, doc_id, DNSID):
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        response = session.get(f'https://mosedo.mos.ru/document.card.php?id={doc_id}&DNSID={DNSID}').text
+        bs = BeautifulSoup(response, 'html.parser')
+        future1 = executor.submit(get_doc_info_test, bs, doc_id)
+        future2 = executor.submit(get_test_tree_from_sample, bs, doc_id)
+        wait([future1, future2])
+        doc_result = future1.result()
+        res_result = future2.result()
+
+    return f'doc insert = {doc_result}, res_insert = {res_result}'
 
 
 if __name__ == "__main__":
-    # get_test_tree_from_sample()
-    with open ('./test_docs/4.html', 'r') as doccard:
-        document = BeautifulSoup(doccard, 'html.parser')
-    get_doc_info_test(document, 519917990)
+    start = datetime.now()
+    print(start)
+    date = datetime(2025, 2, 23, 0, 0, 0)
+    fio = 'Габитов Д.Ш.'
+    sedo_id = 78264321
+    session, DNSID = get_session()
+    doc_ids = get_doc_ids(date, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
+    pprint(doc_ids)
+    with ProcessPoolExecutor(max_workers=50) as executor:
+        futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
 
+        for future in futures:
+            print(future.result())
+    print(datetime.now() - start)
 

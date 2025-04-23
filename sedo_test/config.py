@@ -12,7 +12,10 @@ class ProjectManagementSettings:
     DB_PASSWORD: str = os.environ.get("DB_PASSWORD")
     DB_NAME: str = os.environ.get("DB_NAME")
     DB_SCHEMA: str = os.environ.get("DB_SCHEMA")
+    SEDO_LOG: str = os.environ.get("SEDO_LOG")
+    SEDO_PASS: str = os.environ.get("SEDO_PASS")
 
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
