@@ -19,12 +19,17 @@ def make_search_doc_data(date_from, fio, sedo_id):
     date_from = datetime.strftime(date_from, "%d.%m.%Y")
 
     params = {
+        "check_all_documents": "on",
         "type_0": "1",
         "type_1": "1",
+        "type_2": "1",
+        "type_3": "1",
+        "type_12": "1",
+        "type_13": "1",
         "type_4": "1",
         "type_5": "1",
         "has_period": "1",
-        "year_from": "2024",
+        "year_from": "2009",
         "year_to": f"{datetime.now().year}",
         "org_name": "ДГИГМ",
         "org": "21",
@@ -457,10 +462,6 @@ class Recipient():
         return f'По резолюции {self.resolution_id} - Исполнитель {self.recipient_id} {is_master} {due_date}'
 
 
-        
-
-
-
 def is_visible_tr(tr):
     '''
     keeps only elements without display:none
@@ -694,6 +695,9 @@ def get_res_info(item):
 
                 if not isinstance(divs, Tag):
                         continue
+                if divs.div is None:
+                    print(f'!!!!!\n\n!!!!!!\n{divs}\n!!!!!\n')
+                    continue
                 if divs.div.div is None:
                     tags = divs.div.children
                 else:
@@ -774,6 +778,8 @@ def get_doc_info_test(document, doc_id):
     # with open ('./test_docs/4.html', 'r') as doccard:
     #     document = BeautifulSoup(doccard, 'html.parser')
     doccard_table = document.find('table', attrs={"id": "maintable"})
+    if doccard_table is None:
+        print('!!!!!!')
     answer_result = []
     recipients = []
     result = {
@@ -976,30 +982,49 @@ def get_doc_ids(date_from, fio, sedo_id, session, DNSID):
     url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
     r2 = session.post(url_search, data=data, headers=headers)
     first_soup = BeautifulSoup(r2.text, 'html.parser')
-    pages = first_soup.find('span', attrs={"class": "s-pager__pages"}).find_all('a')
 
-    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    try:
+        count_doc = int(first_soup.find('span', class_='search-export__count').text.split(': ')[1])
+    except: count_doc = 1
+    count_pages = count_doc // 15 + 3
+    
+    all_pages = range(2, count_pages)  # страницы 2–153 включительно
+
+
 
     doc_ids = []
-
+    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
     for docs in docs_ids_soap:
         try:
             doc_ids.append(docs.get('data-docid'))
         except: pass
 
-    current_page = 1
-    for page in pages:
-        current_page = current_page + 1
-        first_soup = BeautifulSoup(session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={current_page}', headers=headers).text, 'html.parser')
-        docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
-        for docs in docs_ids_soap:
-            try:
-                doc_ids.append(docs.get('data-docid'))
-            except: pass
+    def worker(page):
+        return process_doc_ids(session, DNSID, headers, page)
 
+    with ThreadPoolExecutor(max_workers=75) as executor:
+        results = list(executor.map(worker, all_pages))
 
+    # Склеиваем списки в один
+    flat_doc_ids = sum(results, [])
+    print (count_pages)
+    doc_ids = doc_ids + flat_doc_ids
+
+    print(doc_ids)
     return doc_ids
 
+
+def process_doc_ids(session, DNSID, headers, page):
+    first_soup = BeautifulSoup(session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={page}', headers=headers).text, 'html.parser')
+    doc_ids = []
+    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    for docs in docs_ids_soap:
+        try:
+            doc_ids.append(docs.get('data-docid'))
+        except: pass
+
+    doc_ids = [x for x in doc_ids if x is not None]
+    return doc_ids
 
 def process_doc(session, doc_id, DNSID):
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -1018,15 +1043,18 @@ if __name__ == "__main__":
     start = datetime.now()
     print(start)
     date = datetime(2025, 2, 23, 0, 0, 0)
-    fio = 'Габитов Д.Ш.'
-    sedo_id = 78264321
+    fio = 'Мусиенко О.А.'
+    sedo_id = 70045
     session, DNSID = get_session()
     doc_ids = get_doc_ids(date, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
     pprint(doc_ids)
-    with ProcessPoolExecutor(max_workers=50) as executor:
+    
+    with ProcessPoolExecutor(max_workers=60) as executor:
         futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
 
         for future in futures:
             print(future.result())
+
+    print(len(doc_ids))
     print(datetime.now() - start)
 
