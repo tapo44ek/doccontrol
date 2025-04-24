@@ -178,6 +178,169 @@ def make_search_doc_data(date_from, fio, sedo_id):
     return params
 
 
+def make_search_doc_data_forward(date_to, fio, sedo_id):
+    date_to = datetime.strftime(date_to, "%d.%m.%Y")
+
+    params = {
+        "check_all_documents": "on",
+        "type_0": "1",
+        "type_1": "1",
+        "type_2": "1",
+        "type_3": "1",
+        "type_12": "1",
+        "type_13": "1",
+        "type_4": "1",
+        "type_5": "1",
+        "has_period": "1",
+        "year_from": "2009",
+        "year_to": f"{datetime.now().year}",
+        "org_name": "ДГИГМ",
+        "org": "21",
+        "order_by": "default",
+        "required_text": "",
+        "num": "",
+        "rdate_f": "",
+        "reg_user": "",
+        "reg_user_id": "",
+        "rdate_t": "",
+        "recipient": "",
+        "recipient_id": "",
+        "recipient_group": "",
+        "recipient_group_id": "",
+        "in_number": "",
+        "bound_number": "",
+        "contract_bound_number": "",
+        "recipient_org_id": "0",
+        "cl_out_num": "",
+        "cl_out_date_f": "",
+        "cl_out_date_t": "",
+        "cl_sign": "",
+        "cl_sign_id": "",
+        "cl_sign_group": "",
+        "cl_sign_group_id": "",
+        "cl_executor": "",
+        "cl_executor_id": "",
+        "cl_executor_group": "",
+        "cl_executor_group_id": "",
+        "cl_text": "",
+        "out_number": "",
+        "out_date_f": "",
+        "out_reg_user": "",
+        "out_reg_user_id": "",
+        "out_date_t": "",
+        "author": "",
+        "author_id": "",
+        "author_group": "",
+        "author_group_id": "",
+        "prepared_by": "",
+        "prepared_by_id": "",
+        "prepared_by_org_id": "0",
+        "curator": "",
+        "curator_id": "",
+        "short_content": "",
+        "document_kind": "0",
+        "delivery_type": "",
+        "document_special_kind": "0",
+        "external_id": "",
+        "has_manual_sign": "0",
+        "is_hand_shipping": "0",
+        "sign_type": "0",
+        "is_dsp": "0",
+        "is_control": "0",
+        "is_urgent": "0",
+        "creator": "",
+        "creator_id": "",
+        "memo": "",
+        "send_date_f": "",
+        "send_date_t": "",
+        "info": "",
+        "info_author": "",
+        "info_author_id": "",
+        "info_date_f": "",
+        "info_date_t": "",
+        "og_file_number": "0",
+        "rec_vdelo": "0",
+        "vdelo_date_f": "",
+        "vdelo_date_t": "",
+        "vdelo_prepared": "",
+        "vdelo_prepared_id": "",
+        "vdelo_signed": "",
+        "vdelo_signed_id": "",
+        "vdelo_text": "",
+        "res_type": "0",
+        "res_urgency": "0",
+        "resolution_num": "",
+        "r_rdate_f": "",
+        "resolution_creator": "",
+        "resolution_creator_id": "",
+        "r_rdate_t": "",
+        "resolution_author": "",
+        "resolution_author_id": "",
+        "resolution_author_group": "",
+        "resolution_author_group_id": "",
+        "resolution_author_org_id": "0",
+        "r_special_control": "0",
+        "resolution_behalf": "",
+        "resolution_behalf_id": "",
+        "resolution_acting_author": "",
+        "resolution_acting_author_id": "",
+        "resolution_to": f"{fio}",
+        "resolution_to_id": f"{sedo_id}",
+        "resolution_to_group": "Департамент городского имущества города Москвы",
+        "resolution_to_group_id": "21",
+        "resolution_to_org_id": "0",
+        "res_project_letter": "0",
+        "res_curator": "",
+        "res_curator_id": "",
+        "r_control": "2",
+        "r_control_f": "",
+        "r_control_t": f"{date_to}",
+        "r_otv": "0",
+        "r_dback": "0",
+        "resolution_text": "",
+        "r_ef_reason_category_id": "0",
+        "r_ef_reason_id": "0",
+        "r_is_signed": "0",
+        "r_plus": "0",
+        "r_another_control": "0",
+        "r_oncontrol": "0",
+        "r_oncontrol_f": "",
+        "r_oncontrol_t": "",
+        "unset_control": "0",
+        "unset_control_f": "",
+        "unset_control_t": "",
+        "re_date_f": "",
+        "re_date_t": "",
+        "re_author": "",
+        "re_author_id": "",
+        "re_author_group": "",
+        "re_author_group_id": "",
+        "re_acting_author": "",
+        "re_acting_author_id": "",
+        "re_is_interim": "-1",
+        "re_text": "",
+        "docs_in_execution": "0",
+        "re_doc_org_id": "",
+        "csdr_initiator": "",
+        "csdr_initiator_id": "",
+        "csdr_initiator_group": "",
+        "csdr_initiator_group_id": "",
+        "csdr_start": "0",
+        "csdr_stop": "0",
+        "and[csdr][0]": "0",
+        "participant_name_0": "",
+        "participant_name_0_id": "",
+        "participant_group_0": "",
+        "participant_group_0_id": "",
+        "csdr_has_deadline_0": "0",
+        "csdr_status_0": "0",
+        "csdr_init_date_0_f": "",
+        "csdr_init_date_0_t": "",
+    }
+
+    return params
+
+
 def get_session():
     
     s = requests.Session()
@@ -703,6 +866,7 @@ def get_res_info(item):
                 else:
                     tags = divs.div.div.children
                 for tag in tags:
+                    # print(tag)
                     # z = z + 1
 
                     if tag.name == 'strong':
@@ -715,7 +879,32 @@ def get_res_info(item):
                         try:
 
                             for fckn_tag in tag.children:
+                                # print(fckn_tag)
+                                # print(f"current type is {current_group}")
+                                # print(f"current = {control_group}")
+                                if tag.name == "br":
+                                    try:
+                                        for blyat_tag in fckn_tag.children:
+                                            if not isinstance(blyat_tag, Tag):
+                                                continue
+                                            if 'resolution-executor-history' in blyat_tag.get('class', [''])[0]:
+                                                man = parse_control_dates(blyat_tag)
 
+                                                if current_group is not None:
+
+                                                    if current_group == 0:
+                                                        for i in range(len(man)):
+                                                            man[i]['is_control'] = True
+
+                                                    elif current_group == 1:
+                                                        for i in range(len(man)):
+                                                            man[i]['is_control'] = False
+
+                                                    for m in man:
+                                                        control_group.append(m)
+
+                                    except Exception as e:
+                                        print(e)
                                 if 'resolution-executor-history' in fckn_tag.get('class', [''])[0]:
                                     man = parse_control_dates(fckn_tag)
 
@@ -969,7 +1158,7 @@ def get_test_tree_from_sample(document, doc_id):
     return res
 
 
-def get_doc_ids(date_from, fio, sedo_id, session, DNSID):
+def get_doc_ids(date_from, date_to, fio, sedo_id, session, DNSID):
     
 
     headers = {
@@ -979,6 +1168,7 @@ def get_doc_ids(date_from, fio, sedo_id, session, DNSID):
         'Sec-Fetch-Dest': 'document'
     }
     data = make_search_doc_data(date_from, fio, sedo_id)
+    data_forward = make_search_doc_data_forward(date_to, fio, sedo_id)
     url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
     r2 = session.post(url_search, data=data, headers=headers)
     first_soup = BeautifulSoup(r2.text, 'html.parser')
@@ -1005,19 +1195,70 @@ def get_doc_ids(date_from, fio, sedo_id, session, DNSID):
     with ThreadPoolExecutor(max_workers=75) as executor:
         results = list(executor.map(worker, all_pages))
 
+
+
     # Склеиваем списки в один
     flat_doc_ids = sum(results, [])
     print (count_pages)
     doc_ids = doc_ids + flat_doc_ids
 
-    print(doc_ids)
+
+    r2 = session.post(url_search, data=data_forward, headers=headers)
+
+
+    with open("./test_docs/res_2.html", "w") as f:
+        f.write(r2.text)
+    # print(r2.text)
+    first_soup = BeautifulSoup(r2.text, 'html.parser')
+
+    try:
+        count_doc = int(first_soup.find('span', class_='search-export__count').text.split(': ')[1])
+    except: count_doc = 1
+    count_pages = count_doc // 15 + 3
+    
+    all_pages = range(2, count_pages) 
+    print(all_pages) # страницы 2–153 включительно
+
+
+    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    for docs in docs_ids_soap:
+        try:
+            doc_ids.append(docs.get('data-docid'))
+        except: pass
+
+    def worker(page):
+        return process_doc_ids(session, DNSID, headers, page)
+
+    with ThreadPoolExecutor(max_workers=75) as executor:
+        results = list(executor.map(worker, all_pages))
+
+
+
+    # Склеиваем списки в один
+    flat_doc_ids = sum(results, [])
+    print (count_pages)
+    doc_ids = doc_ids + flat_doc_ids
+    print(len(doc_ids))
+
+
+    doc_ids = list(dict.fromkeys(doc_ids))
+    print(len(doc_ids))
     return doc_ids
 
 
 def process_doc_ids(session, DNSID, headers, page):
-    first_soup = BeautifulSoup(session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={page}', headers=headers).text, 'html.parser')
+    response = session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={page}', headers=headers)
+    first_soup = BeautifulSoup(response.text, 'html.parser')
     doc_ids = []
-    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    try:
+        docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    except:
+        with open("./test_docs/res_33.html", "w") as f:
+            f.write(response.text)
+        print(response.status_code)
+        print(page)
+        exit()
+
     for docs in docs_ids_soap:
         try:
             doc_ids.append(docs.get('data-docid'))
@@ -1042,14 +1283,15 @@ def process_doc(session, doc_id, DNSID):
 if __name__ == "__main__":
     start = datetime.now()
     print(start)
-    date = datetime(2025, 2, 23, 0, 0, 0)
+    date_from = datetime(2025, 2, 23, 0, 0, 0)
+    date_to = datetime(2025, 6, 23, 0, 0, 0)
     fio = 'Мусиенко О.А.'
     sedo_id = 70045
     session, DNSID = get_session()
-    doc_ids = get_doc_ids(date, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
+    doc_ids = get_doc_ids(date_from, date_to, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
     pprint(doc_ids)
     
-    with ProcessPoolExecutor(max_workers=60) as executor:
+    with ProcessPoolExecutor(max_workers=50) as executor:
         futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
 
         for future in futures:
@@ -1057,4 +1299,9 @@ if __name__ == "__main__":
 
     print(len(doc_ids))
     print(datetime.now() - start)
+
+    # with open ('./test_docs/debug1.html', 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
+
+    # get_test_tree_from_sample(document=document, doc_id=548471399)
 
