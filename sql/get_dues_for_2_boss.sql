@@ -12,7 +12,8 @@ SELECT
     crazy.boss_name,
     (crazy.boss_due_date)::date,
     crazy.boss2_name,
-    (crazy.boss2_due_date)::date
+    (crazy.boss2_due_date)::date,
+	crazy.children_controls
 FROM public.documents d
 JOIN (
     WITH RECURSIVE resolution_chain AS (
@@ -21,6 +22,7 @@ JOIN (
             r.id,
             r.parent_id,
             r.doc_id,
+			r.type,
             i.leaf_controls,
             r.controls,
             r.recipients,
@@ -36,6 +38,7 @@ JOIN (
             p.id,
             p.parent_id,
             p.doc_id,
+			p.type,
             rc.leaf_controls,
             p.controls,
             p.recipients,
@@ -75,7 +78,8 @@ JOIN (
             id AS boss_id,
             controls
         FROM resolution_chain
-        WHERE jsonb_path_exists(
+        WHERE type = 'Резолюция'
+		AND jsonb_path_exists(
             recipients,
             '$[*] ? (@.sedo_id == "78164285")'
         )
@@ -88,7 +92,8 @@ JOIN (
             id AS boss2_id,
             controls
         FROM resolution_chain
-        WHERE jsonb_path_exists(
+        WHERE type = 'Резолюция'
+		AND jsonb_path_exists(
             recipients,
             '$[*] ? (@.sedo_id == "1558294")'
         )
@@ -141,7 +146,27 @@ JOIN (
             ELSE 1
           END,
           ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
-    )
+    ),
+
+	child_controls AS (
+    SELECT
+        fr.parent_id AS leaf_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'person', c ->> 'person',
+                'due_date', c ->> 'due_date',
+                'closed_date', c ->> 'closed_date',
+				'is_control', c ->> 'is_control',
+				'modified_date', c ->> 'modified_date'
+            )
+        ) AS children_controls
+    FROM flat_resolution fr,
+         jsonb_array_elements(fr.controls) AS c
+    WHERE fr.type = 'Резолюция'
+	AND fr.author_id = 70045
+	AND fr.parent_id IN (SELECT leaf_id FROM initial_leafs)
+    GROUP BY fr.parent_id
+)
 
     SELECT 
         i.leaf_id AS res_id,
@@ -151,9 +176,12 @@ JOIN (
         'Биктимиров Р.Г.' AS boss_name,
         bd.due_date AS boss_due_date,
         'Гаман М.Ф.' AS boss2_name,
-        b2d.due_date AS boss2_due_date
+        b2d.due_date AS boss2_due_date,
+		cc.children_controls 
     FROM initial_leafs i
+	LEFT JOIN child_controls cc ON cc.leaf_id = i.leaf_id
     LEFT JOIN executor_due ed ON ed.leaf_id = i.leaf_id
     LEFT JOIN boss_due bd ON bd.leaf_id = i.leaf_id
     LEFT JOIN boss2_due b2d ON b2d.leaf_id = i.leaf_id
-) crazy ON d.sedo_id = crazy.doc_id;
+) crazy ON d.sedo_id = crazy.doc_id
+	ORDER BY sedo_id ASC;

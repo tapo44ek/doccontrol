@@ -772,6 +772,53 @@ def get_fwd_info(item):
     return info
 
 
+def get_resolution_project_info(item):
+    """
+    params: item: bs4 object
+    get data from forwardings of documents
+    """
+    res_type = item.find('span', attrs={"class": "resolution-item__prefix"}).text
+    res_date = item.find('span', attrs={"class": "resolution-item__timestamp"}).text
+
+    match = re.search(r'\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}', res_date)
+
+
+    if match:
+        res_date = match.group()
+        res_date = datetime.strptime(res_date, '%d.%m.%Y %H:%M:%S')
+
+    res_author_id = item.find('span', attrs={"class": "resolution-item__recipient-title"})\
+        .find_next_sibling('span')\
+            .find('span')\
+                .get('axuiuserid')
+
+
+    res_recipients = item.find_all('span', attrs={"class": "to-user-container"})
+    recipients = []
+
+    for recipient in res_recipients:
+        recipients.append({'sedo_id': recipient.find('span').get('axuiuserid'),
+                            'text': recipient.find('span').text,
+                            'fio': get_recipient_fio(recipient.find('span').get('axuiuserid')),
+                            })
+
+    control_group = [{'person': None, 
+                      'due_date': None, 
+                      'modified_date': None, 
+                      'closed_date': None, 
+                      'overdue_day': None, 
+                      'is_control': False}]
+    info = {
+        "type": res_type,
+        "date": res_date,
+        "author_id": res_author_id,
+        "recipients": recipients,
+        "controls": control_group
+    }
+
+    return info
+
+
 def get_exec_info(item):
     """
     params: item: bs4 object
@@ -1133,6 +1180,9 @@ def get_test_tree_from_sample(document, doc_id):
             if 'rr_fwd' in tr_class:
                 info = get_fwd_info(tr)
                 count += 1
+            elif 'rrr2' in tr_class:
+                info = get_resolution_project_info(tr)
+                count += 1
             elif 'rr1' in tr_class:
                 info = get_res_info(tr)
                 count += 1
@@ -1285,8 +1335,8 @@ if __name__ == "__main__":
     print(start)
     date_from = datetime(2025, 2, 23, 0, 0, 0)
     date_to = datetime(2025, 6, 23, 0, 0, 0)
-    fio = 'Мусиенко О.А.'
-    sedo_id = 70045
+    fio = 'Габитов Д.Ш.'
+    sedo_id = 78264321
     session, DNSID = get_session()
     doc_ids = get_doc_ids(date_from, date_to, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
     pprint(doc_ids)

@@ -25,9 +25,9 @@ if __name__ == '__main__':
 
     DNSID = r.headers['location'].split('DNSID=')[1]
 
-    url = f'https://mosedo.mos.ru/document.card.php?id=519917990&DNSID={DNSID}'
+    url = f'https://mosedo.mos.ru/document.card.php?id=548471399&DNSID={DNSID}'
     response = s.get(url, verify=certifi.where())
     # Сохраняем как HTML-файл
-    with open("./test_docs/4.html", "w") as f:
+    with open("./test_docs/debug1.html", "w") as f:
         f.write(response.text)
     
