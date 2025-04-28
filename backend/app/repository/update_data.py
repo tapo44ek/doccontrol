@@ -1,0 +1,221 @@
+import asyncpg
+import psycopg2
+from psycopg2.extras import execute_values
+from core.config import ProjectManagementSettings
+# from db import get_connection
+from datetime import datetime
+from pathlib import Path
+import json
+from fastapi import HTTPException
+from dateutil.parser import isoparse
+
+class SedoData:
+
+    async def as_insert_resolutions_into_db(self, data: list):
+
+        rows = []
+        for item in data:
+            row = (
+                item['id'],
+                item.get('parent_id'),
+                item['doc_id'],
+                int(item['author_id']) if item.get('author_id') not in (None, '',) else None,
+                isoparse(item['date']),
+                item['dl'],
+                item['type'],
+                json.dumps(item.get('controls', []), ensure_ascii=False),
+                json.dumps(item.get('executions', []), ensure_ascii=False),
+                json.dumps(item.get('recipients', []), ensure_ascii=False)
+            )
+            rows.append(row)
+
+        query = """
+            INSERT INTO public.flat_resolution (
+                id, parent_id, doc_id, author_id, date, dl, type,
+                controls, executions, recipients
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (id) DO UPDATE SET
+                parent_id = EXCLUDED.parent_id,
+                doc_id = EXCLUDED.doc_id,
+                author_id = EXCLUDED.author_id,
+                date = EXCLUDED.date,
+                dl = EXCLUDED.dl,
+                type = EXCLUDED.type,
+                controls = EXCLUDED.controls,
+                executions = EXCLUDED.executions,
+                recipients = EXCLUDED.recipients,
+                updated_at = NOW()
+        """            
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.executemany(query, rows)
+            return 'success'
+        except Exception as e:
+            raise HTTPException(500, detail=e)
+
+
+    async def as_insert_docs_into_db(self, data: dict):
+
+        query = """
+            INSERT INTO documents (
+                sedo_id, date, dgi_number, description,
+                executor_id, executor_fio, executor_company,
+                signed_by_id, signed_by_fio, signed_by_company,
+                answer, recipients
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ON CONFLICT (sedo_id) DO UPDATE SET
+                date = EXCLUDED.date,
+                dgi_number = EXCLUDED.dgi_number,
+                description = EXCLUDED.description,
+                executor_id = EXCLUDED.executor_id,
+                executor_fio = EXCLUDED.executor_fio,
+                executor_company = EXCLUDED.executor_company,
+                signed_by_id = EXCLUDED.signed_by_id,
+                signed_by_fio = EXCLUDED.signed_by_fio,
+                signed_by_company = EXCLUDED.signed_by_company,
+                answer = EXCLUDED.answer,
+                recipients = EXCLUDED.recipients,
+                updated_at = NOW()
+        """
+
+        params = (
+            data['sedo_id'],
+            datetime.strptime(data['date'], "%d.%m.%Y").date(),
+            data['dgi_number'],
+            data['description'],
+            int(data['executor_id']) if data.get('executor_id') not in (None, '',) else None,
+            data['executor_fio'],
+            data['executor_company'],
+            int(data['signed_by_id']) if data.get('signed_by_id') not in (None, '',) else None,
+            data['signed_by_fio'],
+            data['signed_by_company'],
+            json.dumps(data['answer'], ensure_ascii=False),
+            json.dumps(data['recipients'], ensure_ascii=False),
+        )
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query, *params)
+            return 1
+        except Exception as e:
+            raise HTTPException(500, detail=e)
+
+    def insert_resolutions_into_db(self, data :list):
+        connection = psycopg2.connect(
+                host=ProjectManagementSettings.DB_HOST,
+                user=ProjectManagementSettings.DB_USER,
+                password=ProjectManagementSettings.DB_PASSWORD,
+                port=ProjectManagementSettings.DB_PORT,
+                database=ProjectManagementSettings.DB_NAME
+            )
+        cursor = connection.cursor()
+
+        rows = []
+        for item in data:
+            row = (
+                item['id'],
+                item.get('parent_id'),
+                item['doc_id'],
+                int(item['author_id']) if (item['author_id'] is not None) & (item['author_id'] != '') else None,
+                isoparse(item['date']),
+                item['dl'],
+                item['type'],
+                json.dumps(item.get('controls', []), ensure_ascii=False),
+                json.dumps(item.get('executions', []), ensure_ascii=False),
+                json.dumps(item.get('recipients', []), ensure_ascii=False)
+            )
+            rows.append(row)
+
+        try:
+            execute_values(cursor, """
+                INSERT INTO public.flat_resolution (
+                    id, parent_id, doc_id, author_id, date, dl, type,
+                    controls, executions, recipients
+                )
+                VALUES %s
+                ON CONFLICT (id) DO UPDATE SET
+                    parent_id = EXCLUDED.parent_id,
+                    doc_id = EXCLUDED.doc_id,
+                    author_id = EXCLUDED.author_id,
+                    date = EXCLUDED.date,
+                    dl = EXCLUDED.dl,
+                    type = EXCLUDED.type,
+                    controls = EXCLUDED.controls,
+                    executions = EXCLUDED.executions,
+                    recipients = EXCLUDED.recipients,
+                    updated_at = NOW()
+            """, rows)
+
+            connection.commit()
+            result = 1
+            return 1
+        except Exception as e:
+            raise HTTPException(500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
+
+
+    def insert_documents_into_db(self, doc :dict):
+        connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO documents (
+                    sedo_id, date, dgi_number, description,
+                    executor_id, executor_fio, executor_company,
+                    signed_by_id, signed_by_fio, signed_by_company,
+                    answer, recipients
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (sedo_id) DO UPDATE SET
+                    date = EXCLUDED.date,
+                    dgi_number = EXCLUDED.dgi_number,
+                    description = EXCLUDED.description,
+                    executor_id = EXCLUDED.executor_id,
+                    executor_fio = EXCLUDED.executor_fio,
+                    executor_company = EXCLUDED.executor_company,
+                    signed_by_id = EXCLUDED.signed_by_id,
+                    signed_by_fio = EXCLUDED.signed_by_fio,
+                    signed_by_company = EXCLUDED.signed_by_company,
+                    answer = EXCLUDED.answer,
+                    recipients = EXCLUDED.recipients,
+                    updated_at = NOW()
+            """, (
+                doc['sedo_id'],
+                datetime.strptime(doc['date'], "%d.%m.%Y").date(),
+                doc['dgi_number'],
+                doc['description'],
+                int(doc['executor_id']) if (doc['executor_id'] is not None) & (doc['executor_id'] != '') else None,
+                doc['executor_fio'],
+                doc['executor_company'],
+                int(doc['signed_by_id']) if (doc['signed_by_id'] is not None) & (doc['signed_by_id'] != '') else None,
+                doc['signed_by_fio'],
+                doc['signed_by_company'],
+                json.dumps(doc['answer'], ensure_ascii=False),
+                json.dumps(doc['recipients'], ensure_ascii=False)
+            ))
+
+            connection.commit()
+            result = 1
+            return 1
+        except Exception as e:
+            raise HTTPException(500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
+
