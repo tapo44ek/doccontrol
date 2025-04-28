@@ -43,7 +43,7 @@ initial_leafs AS (
     FROM public.flat_resolution fr
     WHERE jsonb_path_exists(
             controls,
-            '$[*] ? (@.person == __EXECUTOR_NAME__ && @.closed_date == null)'
+            '$[*] ? (@.person == "__EXECUTOR_NAME__" && @.closed_date == null)'
         )
       AND jsonb_path_exists(
             recipients,
@@ -51,7 +51,7 @@ initial_leafs AS (
         )
       AND NOT jsonb_path_exists(
             executions,
-            '$[*] ? (@.author like_regex __EXECUTOR_NAME__)'
+            '$[*] ? (@.author like_regex "__EXECUTOR_NAME__")'
         )
 ),
 
@@ -103,7 +103,7 @@ executor_due AS (
         c ->> 'due_date' AS due_date
     FROM initial_leafs,
          jsonb_array_elements(leaf_controls) AS c
-    WHERE c ->> 'person' = %(executor_name)s
+    WHERE c ->> 'person' = '__EXECUTOR_NAME__'
       AND c ->> 'closed_date' IS NULL
     ORDER BY leaf_id,
         CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -116,7 +116,7 @@ boss_due AS (
         c ->> 'due_date' AS due_date
     FROM boss_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = %(boss1_name)s
+    WHERE c ->> 'person' = '__BOSS1_NAME__'
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -129,7 +129,7 @@ boss2_due AS (
         c ->> 'due_date' AS due_date
     FROM boss2_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = %(boss2_name)s
+    WHERE c ->> 'person' = '__BOSS2_NAME__'
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -142,7 +142,7 @@ boss3_due AS (
         c ->> 'due_date' AS due_date
     FROM boss3_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = %(boss3_name)s
+    WHERE c ->> 'person' = '__BOSS3_NAME__'
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -164,7 +164,7 @@ child_controls AS (
     FROM flat_resolution fr,
          jsonb_array_elements(fr.controls) AS c
     WHERE fr.type = 'Резолюция'
-      AND fr.author_id = %(executor_sedo_id)s
+      AND fr.author_id = __EXECUTOR_SEDO_ID__
       AND fr.parent_id IN (SELECT leaf_id FROM initial_leafs)
     GROUP BY fr.parent_id
 ),
@@ -173,13 +173,13 @@ crazy AS (
     SELECT 
         i.leaf_id AS res_id,
         i.doc_id,
-        %(executor_name)s AS executor_name,
+        '__EXECUTOR_NAME__' AS executor_name,
         ed.due_date AS executor_due_date,
-        %(boss1_name)s AS boss_name,
+        '__BOSS1_NAME__' AS boss_name,
         bd.due_date AS boss_due_date,
-        %(boss2_name)s AS boss2_name,
+        '__BOSS2_NAME__' AS boss2_name,
         b2d.due_date AS boss2_due_date,
-        %(boss3_name)s AS boss3_name,
+        '__BOSS3_NAME__' AS boss3_name,
         b3d.due_date AS boss3_due_date,
         cc.children_controls 
     FROM initial_leafs i
