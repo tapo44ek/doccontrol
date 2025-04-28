@@ -15,19 +15,19 @@ params = {
     "boss3_sedo_id": 1558294
 }
 
-with open("./sql/select_placeholders.sql", "r", encoding="utf-8") as f:
+with open("../../sql/select_placeholders.sql", "r", encoding="utf-8") as f:
     sql_template = f.read()
 
 
 sql = (
     sql_template
-    .replace("__EXECUTOR_NAME__", f'"{params["executor_name"]}"')
+    .replace("__EXECUTOR_NAME__", f'{params["executor_name"]}')
     .replace("__EXECUTOR_SEDO_ID__", str(params["executor_sedo_id"]))
-    .replace("__BOSS1_NAME__", f'"{params["boss1_name"]}"')
+    .replace("__BOSS1_NAME__", f'{params["boss1_name"]}')
     .replace("__BOSS1_SEDO_ID__", str(params["boss1_sedo_id"]))
-    .replace("__BOSS2_NAME__", f'"{params["boss2_name"]}"')
+    .replace("__BOSS2_NAME__", f'{params["boss2_name"]}')
     .replace("__BOSS2_SEDO_ID__", str(params["boss2_sedo_id"]))
-    .replace("__BOSS3_NAME__", f'"{params["boss3_name"]}"')
+    .replace("__BOSS3_NAME__", f'{params["boss3_name"]}')
     .replace("__BOSS3_SEDO_ID__", str(params["boss3_sedo_id"]))
 )
 
@@ -39,7 +39,7 @@ with psycopg2.connect(
             database=ProjectManagementSettings.DB_NAME
         ) as conn:
     with conn.cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute(sql)
         colnames = [desc[0] for desc in cur.description]
         rows = cur.fetchall()
 
@@ -54,4 +54,4 @@ pprint(result_json)
 df = pd.DataFrame(result_dicts)
 
 # Сохраняем в Excel (если нужно)
-df.to_excel(f"./test_docs/результаты_{params['executor_name']}.xlsx", index=False)
+df.to_excel(f"../../test_docs/результаты_{params['executor_name']}.xlsx", index=False)
