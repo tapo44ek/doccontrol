@@ -3,10 +3,9 @@ from repository.user import UserRepository
 from repository.update_data import SedoData
 from fastapi import HTTPException
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup, Tag
 import re
-from datetime import datetime
 import psycopg2
 from psycopg2.extras import execute_values
 import sys
@@ -1102,9 +1101,10 @@ class DataService:
 
     def update_data(self, params :dict):
         user_repository = UserRepository()
-        fio = user_repository.no_pool_get_user_fio_by_sedo_id(params['sedo_id'])
-        date_from = datetime.strptime(params['date_from'], "%d.%m.%Y")
-        date_to = datetime.strptime(params['date_to'], "%d.%m.%Y")
+        params = user_repository.no_pool_get_user_info_by_id(params['user_id'])
+        fio = params['name']
+        date_from = datetime.now() - timedelta(days=params['start_d_days'])
+        date_to = datetime.now() + timedelta(days=params['end_d_days'])
         session, DNSID = self.get_session()
         doc_ids = self.get_doc_ids(date_from, date_to, fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
         with ProcessPoolExecutor(max_workers=50) as executor:

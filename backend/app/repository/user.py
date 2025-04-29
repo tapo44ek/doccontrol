@@ -23,6 +23,61 @@ class UserRepository:
             return row['name']
         return "Not Found"
 
+    
+    async def get_user_info_by_id(self, id :int) -> dict | None:
+        
+        sql = '''
+        SELECT sedo_id, name, boss1_sedo, boss2_sedo, boss3_sedo, start_d_days, end_d_days 
+        FROM public.user 
+        WHERE id = $1 
+        LIMIT 1
+        '''
+        try:
+            async with get_connection() as conn:
+                row = await conn.fetchrow(sql, id)
+        
+            if row:
+                return dict(row)
+            return None
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=e)
+
+    def no_pool_get_user_info_by_id(self, id :int) -> dict | None:
+        
+        sql = f'''
+        SELECT sedo_id, name, boss1_sedo, boss2_sedo, boss3_sedo, start_d_days, end_d_days 
+        FROM public.user 
+        WHERE id = {id} 
+        LIMIT 1
+        '''
+        connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(sql)
+            colnames = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            if rows:
+                print(rows)
+                print(type(rows))
+                return dict(zip(colnames, rows[0]))
+            else: return None
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
+
+
     def no_pool_get_user_fio_by_sedo_id(self, id :int) -> str:
 
         sql = f'''

@@ -9,17 +9,17 @@ class DocRepository:
     async def get_doc_controls(self, params: dict) -> list[dict]:
         sql_template = self.SQL_PATH.read_text(encoding="utf-8")
         query_params = [
-            f'$[*] ? (@.person == "{params["executor_name"]}" && @.closed_date == null)',  # $1
-            f'$[*] ? (@.sedo_id == "{params["executor_sedo_id"]}")',                          # $2
-            f'$[*] ? (@.author like_regex "{params["executor_name"]}")',                    # $3
-            f'$[*] ? (@.sedo_id == "{params["boss1_sedo_id"]}")',                              # $4
-            f'$[*] ? (@.sedo_id == "{params["boss2_sedo_id"]}")',                              # $5
-            f'$[*] ? (@.sedo_id == "{params["boss3_sedo_id"]}")',                              # $6
-            params["executor_name"],                                                       # $7
+            f'$[*] ? (@.person == "{params["name"]}" && @.closed_date == null)',  # $1
+            f'$[*] ? (@.sedo_id == "{params["sedo_id"]}")',                          # $2
+            f'$[*] ? (@.author like_regex "{params["name"]}")',                    # $3
+            f'$[*] ? (@.sedo_id == "{params["boss1_sedo"]}")',                              # $4
+            f'$[*] ? (@.sedo_id == "{params["boss2_sedo"]}")',                              # $5
+            f'$[*] ? (@.sedo_id == "{params["boss3_sedo"]}")',                              # $6
+            params["name"],                                                       # $7
             params["boss1_name"],                                                          # $8
             params["boss2_name"],                                                          # $9
             params["boss3_name"],                                                         # $10
-            int(params["executor_sedo_id"])                                               # $11 (author_id)
+            int(params["sedo_id"])                                               # $11 (author_id)
         ]
 
         print(query_params)
