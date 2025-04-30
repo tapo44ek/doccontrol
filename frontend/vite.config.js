@@ -7,4 +7,6 @@ export default defineConfig({
   plugins: [react(),
     tailwindcssVite()
   ],
+  base: '/doccontrol/',
+  
 })

@@ -1,29 +1,22 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom';
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import './Test'
-import ParentChildTable from './Test'
-import TableContainer from './TableContainer'
-import RefreshButton from './RefreshButton'
+import GabitovDS from './GabitovDS';
 
 function App() {
 
   return (
-    <>
-    <title> Контроль</title>
-    <h1 className='top'>Контроль писем</h1>
-      <div>
-        <RefreshButton/>
-      </div>
-      <div>
+    <Routes>
+      <Route path="/GabitovDS" element={<GabitovDS />} />
 
-        <TableContainer/>
-        
-      </div>
-      
-    </>
-  )
+      {/* Редирект на главную, если путь не найден */}
+      <Route path="*" element={<Navigate to="/GabitovDS" />} />
+    </Routes>
+  );
 }
+
 
 export default App

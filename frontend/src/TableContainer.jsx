@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import './Test'
 import ParentChildTable from './Test'
 
-function TableContainer() {
+function TableContainer({ id }) {
   const [count, setCount] = useState(0)
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -14,7 +12,7 @@ function TableContainer() {
     const fetchData = async () => {
       try {
         const payload = {
-          user_id: 1
+          user_id: id
         };
 
         const response = await fetch('http://127.0.0.1:8000/doccontrol/user', {

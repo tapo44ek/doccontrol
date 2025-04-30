@@ -1,17 +1,17 @@
 import { useState } from 'react';
 
-export default function RefreshButton({ onSuccess }) {
+export default function RefreshButton({ onSuccess , id}) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/update/user', {
+      const response = await fetch('http://10.9.96.160:5152/update/user', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ user_id: 1 }), // если нужно тело запроса
+        body: JSON.stringify({ user_id: id }), // если нужно тело запроса
       });
 
       if (!response.ok) {

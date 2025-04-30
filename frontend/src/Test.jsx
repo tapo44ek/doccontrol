@@ -83,12 +83,20 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'dgi_number',
       enableSorting: true,
-      header: 'ДГИ номер',
-      cell: ({ row }) => row.original._isFirst && (
-        <td rowSpan={row.original._groupSize} className="px-4 py-2">
-          {row.getValue('dgi_number')}
-        </td>
-      ),
+      header: '№ ДГИ',
+      cell: ({ row }) =>
+        row.original._isFirst && (
+          <td rowSpan={row.original._groupSize} className="px-4 py-2">
+            <a
+              href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
+              className="text-blue-600 underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {row.getValue('dgi_number')}
+            </a>
+          </td>
+        ),
       size: 50,
     },
     {
@@ -105,7 +113,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'description',
       enableSorting: true,
-      header: 'Описание',
+      header: 'Содержание',
       cell: ({ row }) => row.original._isFirst && (
         <td rowSpan={row.original._groupSize} className="px-4 py-2">
           {row.getValue('description')}
@@ -116,7 +124,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'executor_due_date',
       enableSorting: true,
-      header: 'Дата исполнения',
+      header: 'Срок исполнения',
       cell: ({ row }) => row.original._isFirst && (
         <td rowSpan={row.original._groupSize} className="px-4 py-2">
           {row.getValue('executor_due_date') ? new Date(row.getValue('executor_due_date')).toLocaleDateString() : ''}
@@ -127,7 +135,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'boss_due_date',
       enableSorting: true,
-      header: 'Дата начальника???',
+      header: 'Срок начальника???',
       cell: ({ row }) => row.original._isFirst && (
         <td rowSpan={row.original._groupSize} className="px-4 py-2">
           {row.getValue('boss_due_date') ? new Date(row.getValue('boss_due_date')).toLocaleDateString() : ''}
@@ -138,7 +146,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'boss2_due_date',
       enableSorting: true,
-      header: 'Дата начальника2???',
+      header: 'Срок начальника2???',
       cell: ({ row }) => row.original._isFirst && (
         <td rowSpan={row.original._groupSize} className="px-4 py-2">
           {row.getValue('boss2_due_date') ? new Date(row.getValue('boss2_due_date')).toLocaleDateString() : ''}
@@ -149,7 +157,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'boss3_due_date',
       enableSorting: true,
-      header: 'Дата начальника3???',
+      header: 'Срок начальника3???',
       cell: ({ row }) => row.original._isFirst && (
         <td rowSpan={row.original._groupSize} className="px-4 py-2">
           {row.getValue('boss3_due_date') ? new Date(row.getValue('boss3_due_date')).toLocaleDateString() : ''}
@@ -167,7 +175,7 @@ export default function ParentChildTable({ data }) {
     {
       accessorKey: 'due_date',
       enableSorting: false,
-      header: 'Дата',
+      header: 'Срок',
       cell: ({ row }) => <td className="px-4 py-2">
         {row.getValue('due_date')}
       </td>,
