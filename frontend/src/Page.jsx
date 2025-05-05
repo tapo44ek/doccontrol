@@ -10,7 +10,7 @@ function Page({id}) {
     <header className="flex items-center justify-between px-4 py-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
   {/* Левая кнопка */}
   <div className="flex items-center">
-  <RefreshButton id={1}/>
+  <RefreshButton id={id}/>
   </div>
 
   {/* Центрированный заголовок */}
