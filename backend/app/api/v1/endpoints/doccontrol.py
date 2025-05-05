@@ -20,3 +20,11 @@ async def get_wo_controls(params: GetInfoUser):
     result = await docservice.get_docs_wo_controls(params.dict())
     return result
 
+@router.post("/boss_names")
+async def get_boss_names(params: GetInfoUser):
+    docservice = DocService()
+    result = await docservice.get_boss_names(params.dict())
+    return result
+
+
+
