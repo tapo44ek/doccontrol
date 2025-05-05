@@ -94,7 +94,7 @@ export default function ParentChildTable({ data, id }) {
   useEffect(() => {
     const loadBossNames = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/doccontrol/boss_names', {
+        const res = await fetch('http://10.9.96.160:5152/doccontrol/boss_names', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: id }),
@@ -116,7 +116,7 @@ export default function ParentChildTable({ data, id }) {
     if (next && noDueData.length === 0) {
       setIsLoading(true);
       try {
-        const res = await fetch('http://127.0.0.1:8000/doccontrol/user_wo', {
+        const res = await fetch('http://10.9.96.160:5152/doccontrol/user_wo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: id }),

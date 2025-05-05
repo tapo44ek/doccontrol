@@ -15,7 +15,7 @@ function TableContainer({ id }) {
           user_id: id
         };
 
-        const response = await fetch('http://127.0.0.1:8000/doccontrol/user', {
+        const response = await fetch('http://10.9.96.160:5152/doccontrol/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
