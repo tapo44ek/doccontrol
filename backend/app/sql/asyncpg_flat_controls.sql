@@ -1,4 +1,21 @@
-WITH RECURSIVE resolution_chain AS (
+WITH RECURSIVE
+
+initial_leafs AS (
+    SELECT 
+        fr.id AS leaf_id,
+        fr.parent_id,
+        fr.id,
+        fr.doc_id,
+        fr.controls AS leaf_controls,
+        fr.recipients,
+        fr.executions
+    FROM public.flat_resolution fr
+    WHERE jsonb_path_exists(controls, $1)
+      AND jsonb_path_exists(recipients, $2)
+      AND (NOT jsonb_path_exists(executions, $3) OR 1=1)
+),
+
+resolution_chain AS (
     SELECT 
         i.leaf_id,
         r.id,
@@ -30,29 +47,7 @@ WITH RECURSIVE resolution_chain AS (
     JOIN resolution_chain rc ON p.id = rc.parent_id
 ),
 
-initial_leafs AS (
-    SELECT 
-        fr.id AS leaf_id,
-        fr.parent_id,
-        fr.id,
-        fr.doc_id,
-        fr.controls AS leaf_controls,
-        fr.recipients,
-        fr.executions
-    FROM public.flat_resolution fr
-    WHERE jsonb_path_exists(
-            controls,
-            $1
-        )
-      AND jsonb_path_exists(
-            recipients,
-            $2
-        )
-    --   AND NOT jsonb_path_exists(
-    --         executions,
-    --         $3
-    --     )
-),
+
 
 boss_node AS (
     SELECT DISTINCT ON (leaf_id)
