@@ -1,11 +1,15 @@
 import asyncpg
 from db import get_connection
 from pathlib import Path
+from core.config import ProjectManagementSettings
+import psycopg2
+from fastapi import HTTPException
 
 
 class DocRepository:
     SQL_PATH = Path("./sql/asyncpg_flat_controls.sql")
-
+    SQL_GET_DOC_IDS = Path("./sql/select_with_dues.sql")
+    SQL_GET_DOC_IDS_WO_DUES = Path("./sql/select_without_dues.sql")
     async def get_doc_controls(self, params: dict) -> list[dict]:
         sql_template = self.SQL_PATH.read_text(encoding="utf-8")
         query_params = [
@@ -29,9 +33,63 @@ class DocRepository:
         
         return [dict(row) for row in rows]
 
-    
-    # def get_docs_to_update(self):
-        
-    #     return
+
+    def get_docs_to_update(self, params :dict) -> None | dict:
+
+        sql = f'''
+            SELECT DISTINCT doc_id
+            FROM (
+                SELECT f.doc_id
+                FROM public.flat_resolution f
+                WHERE jsonb_path_exists(
+                    f.recipients,
+                    '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                )
+                AND jsonb_path_exists(
+                    f.controls,
+                    '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                )
+
+                UNION
+
+                SELECT f.doc_id
+                FROM public.flat_resolution f
+                WHERE jsonb_path_exists(
+                    f.recipients,
+                    '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                )
+                AND NOT jsonb_path_exists(
+                    f.executions,
+                    '$[*] ? (@.author == "{params["name"]}")'
+                )
+                AND NOT jsonb_path_exists(
+                    f.controls,
+                    '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                )
+            ) AS combined;
+        '''
+        connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(sql)
+
+            rows = cursor.fetchall()
+            if rows:
+                return [row[0] for row in rows]
+            else: return []
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
 
 
