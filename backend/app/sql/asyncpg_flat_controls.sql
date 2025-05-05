@@ -48,10 +48,10 @@ initial_leafs AS (
             recipients,
             $2
         )
-      AND NOT jsonb_path_exists(
-            executions,
-            $3
-        )
+    --   AND NOT jsonb_path_exists(
+    --         executions,
+    --         $3
+    --     )
 ),
 
 boss_node AS (

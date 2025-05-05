@@ -29,4 +29,9 @@ class DocRepository:
         
         return [dict(row) for row in rows]
 
+    
+    # def get_docs_to_update(self):
+        
+    #     return
+
 
