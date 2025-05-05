@@ -15,7 +15,8 @@ class UserRepository:
         WHERE sedo_id = $1 
         LIMIT 1
         '''
-
+        if id is None:
+            return None
         async with get_connection() as conn:
             row = await conn.fetchrow(sql, id)
         
@@ -79,7 +80,9 @@ class UserRepository:
 
 
     def no_pool_get_user_fio_by_sedo_id(self, id :int) -> str:
-
+        
+        if id is None:
+            return None
         sql = f'''
         SELECT name 
         FROM catalog.sedo 
