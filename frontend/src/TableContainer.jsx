@@ -15,7 +15,7 @@ function TableContainer({ id }) {
           user_id: id
         };
 
-        const response = await fetch('http://10.9.96.160:5152/doccontrol/user', {
+        const response = await fetch('http://127.0.0.1:8000/doccontrol/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -43,14 +43,16 @@ function TableContainer({ id }) {
   }
 
   if (!data) {
-    return <div className="text-gray-500">Загрузка данных...</div>;
+    return   <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
+    Загрузка…
+  </div>;
   }
 
   return (
     <>
       <div>
 
-        <ParentChildTable data={data} />
+        <ParentChildTable data={data} id={id} />
         
       </div>
       

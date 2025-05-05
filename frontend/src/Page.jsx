@@ -2,7 +2,7 @@ import './App.css'
 import TableContainer from './TableContainer'
 import RefreshButton from './RefreshButton'
 
-function GabitovDS() {
+function Page({id}) {
 
   return (
     <>
@@ -20,7 +20,7 @@ function GabitovDS() {
 </header>
 
       <div>
-        <TableContainer id={1}/>
+        <TableContainer id={id}/>
         
       </div>
       
@@ -28,4 +28,4 @@ function GabitovDS() {
   )
 }
 
-export default GabitovDS
+export default Page
