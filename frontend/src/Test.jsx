@@ -4,7 +4,7 @@ import {
   getCoreRowModel,
   getSortedRowModel
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parseISO, format, isValid } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -89,6 +89,25 @@ export default function ParentChildTable({ data, id }) {
   const [noDueData, setNoDueData] = useState([]);
   const [showNoDue, setShowNoDue] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [bossNames, setBossNames] = useState({ boss1: null, boss2: null, boss3: null });
+
+  useEffect(() => {
+    const loadBossNames = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/doccontrol/boss_names', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: id }),
+        });
+        const data = await res.json();
+        setBossNames(data); // { boss1: "Иванов", boss2: null, boss3: "Петрова" }
+      } catch (e) {
+        console.error('Ошибка при получении имён начальников:', e);
+      }
+    };
+
+    loadBossNames();
+  }, [id]);
 
   const handleCheckboxToggle = async () => {
     const next = !showNoDue;
@@ -140,126 +159,142 @@ export default function ParentChildTable({ data, id }) {
     return Array.from(persons).sort();
   }, [tableData]);
 
-  const columns = useMemo(() => [
-    {
-      accessorKey: 'dgi_number',
-      enableSorting: true,
-      header: '№ ДГИ',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200">
-            <a
-              href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
-              className="text-blue-600 underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {row.getValue('dgi_number')}
-            </a>
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'date',
-      enableSorting: true,
-      header: 'Дата',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-            {new Date(row.getValue('date')).toLocaleDateString()}
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'description',
-      enableSorting: true,
-      header: 'Содержание',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 ">
-            {row.getValue('description')}
-          </td>
-        ),
-      size: 600,
-    },
-    {
-      accessorKey: 'executor_due_date',
-      enableSorting: true,
-      header: 'Срок исполнения',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-            <DateBadge date={row.getValue('executor_due_date')} />
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'boss_due_date',
-      enableSorting: true,
-      header: 'Срок начальника',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-            <DateBadge date={row.getValue('boss_due_date')} />
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'boss2_due_date',
-      enableSorting: true,
-      header: 'Срок начальника 2',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-             <DateBadge date={row.getValue('boss2_due_date')} />
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'boss3_due_date',
-      enableSorting: true,
-      header: 'Срок начальника 3',
-      cell: ({ row }) =>
-        row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-             <DateBadge date={row.getValue('boss3_due_date')} />
-          </td>
-        ),
-      size: 100,
-    },
-    {
-      accessorKey: 'person',
-      enableSorting: false,
-      header: 'Исполнитель',
-      cell: ({ row }) => (
-        <td className="px-4 py-3 border-b border-gray-200">{row.getValue('person')}</td>
-      ),
-      size: 150,
-    },
-    {
-      accessorKey: 'due_date',
-      enableSorting: false,
-      header: 'Срок',
-      cell: ({ row }) => (
-        <td className="px-4 py-3 border-b border-gray-200">{row.getValue('due_date')}</td>
-      ),
-      size: 100,
-    },
-    {
-      accessorKey: 'closed_date',
-      enableSorting: false,
-      header: 'Дата закрытия',
-      cell: ({ row }) => (
-        <td className="px-4 py-3 border-b border-gray-200">{row.getValue('closed_date')}</td>
-      ),
-      size: 100,
+  const columns = useMemo(() => {
+    const base = [
+      {
+        accessorKey: 'dgi_number',
+        enableSorting: true,
+        header: '№ ДГИ',
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200">
+              <a
+                href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
+                className="text-blue-600 underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {row.getValue('dgi_number')}
+              </a>
+            </td>
+          ),
+        size: 100,
+      },
+      {
+        accessorKey: 'date',
+        enableSorting: true,
+        header: 'Дата',
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              {new Date(row.getValue('date')).toLocaleDateString()}
+            </td>
+          ),
+        size: 100,
+      },
+      {
+        accessorKey: 'description',
+        enableSorting: true,
+        header: 'Содержание',
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              {row.getValue('description')}
+            </td>
+          ),
+        size: 600,
+      },
+      {
+        accessorKey: 'executor_due_date',
+        enableSorting: true,
+        header: 'Срок исполнения',
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              <DateBadge date={row.getValue('executor_due_date')} />
+            </td>
+          ),
+        size: 100,
+      }
+    ];
+  
+    if (bossNames.boss1) {
+      base.push({
+        accessorKey: 'boss_due_date',
+        enableSorting: true,
+        header: `Срок: ${bossNames.boss1}`,
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              <DateBadge date={row.getValue('boss_due_date')} />
+            </td>
+          ),
+        size: 100,
+      });
     }
-  ], []);
+  
+    if (bossNames.boss2) {
+      base.push({
+        accessorKey: 'boss2_due_date',
+        enableSorting: true,
+        header: `Срок: ${bossNames.boss2}`,
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              <DateBadge date={row.getValue('boss2_due_date')} />
+            </td>
+          ),
+        size: 100,
+      });
+    }
+  
+    if (bossNames.boss3) {
+      base.push({
+        accessorKey: 'boss3_due_date',
+        enableSorting: true,
+        header: `Срок: ${bossNames.boss3}`,
+        cell: ({ row }) =>
+          row.original._isFirst && (
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+              <DateBadge date={row.getValue('boss3_due_date')} />
+            </td>
+          ),
+        size: 100,
+      });
+    }
+  
+    base.push(
+      {
+        accessorKey: 'person',
+        enableSorting: false,
+        header: 'Исполнитель',
+        cell: ({ row }) => (
+          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('person')}</td>
+        ),
+        size: 150,
+      },
+      {
+        accessorKey: 'due_date',
+        enableSorting: false,
+        header: 'Срок',
+        cell: ({ row }) => (
+          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('due_date')}</td>
+        ),
+        size: 100,
+      },
+      {
+        accessorKey: 'closed_date',
+        enableSorting: false,
+        header: 'Дата закрытия',
+        cell: ({ row }) => (
+          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('closed_date')}</td>
+        ),
+        size: 100,
+      }
+    );
+  
+    return base;
+  }, [bossNames]);
 
   const table = useReactTable({
     data: filteredData,
