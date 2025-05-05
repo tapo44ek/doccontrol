@@ -14,3 +14,9 @@ async def get_controls(params: GetInfoUser):
     result = await docservice.get_docs_controls(params.dict())
     return result
 
+@router.post("/user_wo")
+async def get_wo_controls(params: GetInfoUser):
+    docservice = DocService()
+    result = await docservice.get_docs_wo_controls(params.dict())
+    return result
+
