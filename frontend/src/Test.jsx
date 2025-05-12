@@ -22,6 +22,8 @@ const parseChildren = (controls) => {
   }
 };
 
+
+
 const processData = (data) => {
   return data.flatMap(item => {
     const children = parseChildren(item.children_controls);
@@ -84,6 +86,7 @@ const DateBadge = ({ date }) => {
   );
 };
 
+
 export default function ParentChildTable({ data, id }) {
   const [sorting, setSorting] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
@@ -92,6 +95,8 @@ export default function ParentChildTable({ data, id }) {
   const [isLoading, setIsLoading] = useState(false);
   const [bossNames, setBossNames] = useState({ boss1: null, boss2: null, boss3: null });
   const [selected, setSelected] = useState(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [updatingDocs, setUpdatingDocs] = useState([]);
 
   const toggleSelect = (res_id) => {
     setSelected(prev => {
@@ -171,21 +176,38 @@ useEffect(() => {
 // 3. Универсальный handler обновления
 const handleUpdateMany = async (doclist) => {
   if (!doclist || doclist.length === 0) return;
+
+  const isBulk = doclist.length > 0;
+  if (isBulk) setIsBulkUpdating(true);
+  else setUpdatingDocs(prev => [...prev, doclist[0]]); // << заменить Set на Array
+
   try {
     const res = await fetch('http://127.0.0.1:8000/update/docs_by_id', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id, doclist: doclist }),
+      body: JSON.stringify({ user_id: id, doclist }),
     });
+
     if (!res.ok) throw new Error('Ошибка обновления');
+
     const updatedDocs = await res.json();
     const map = new Map(updatedDocs.map(doc => [doc.sedo_id, doc]));
-    setTableData(prev => prev.map(item => map.has(item.sedo_id) ? map.get(item.sedo_id) : item));
+    setTableData(prev =>
+      prev.map(item => map.has(item.sedo_id) ? map.get(item.sedo_id) : item)
+    );
     setSelected(new Set());
   } catch (e) {
     console.error('Ошибка при обновлении:', e);
+  } finally {
+    if (isBulk) {
+      setIsBulkUpdating(false);
+    } else {
+      setUpdatingDocs(prev => prev.filter(id => id !== doclist[0]));
+    }
   }
 };
+
+
 
 const handleBulkUpdate = () => {
   const doclist = Array.from(selected);
@@ -215,24 +237,7 @@ const handleUpdate = (sedo_id) => {
 
   const columns = useMemo(() => {
     const base = [
-      {
-        id: 'select',
-        header: '',
-        cell: ({ row }) => row.original._isFirst && (
-          <td rowSpan={row.original._groupSize} className="px-2 py-3 border-b border-gray-200">
-            <input
-              type="checkbox"
-              
-              onChange={() => toggleSelect(Number(row.original.sedo_id))}
-              checked={selected.has(Number(row.original.sedo_id))}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded appearance-auto"
 
-            />
-            {/* <input type="checkbox" className="h-5 w-5 bg-red-200" defaultChecked /> */}
-          </td>
-        ),
-        size: 40
-      },
       {
         accessorKey: 'dgi_number',
         enableSorting: true,
@@ -249,13 +254,18 @@ const handleUpdate = (sedo_id) => {
     {row.getValue('dgi_number')}
   </a>
   <div className="flex items-center gap-1 mt-1">
-    <button
-      onClick={() => handleUpdate(row.original.sedo_id)}
-      className="text-blue-600 hover:text-blue-800"
-      title="Обновить"
-    >
-      <RotateCcw className="w-4 h-4" />
-    </button>
+<button
+  onClick={() => handleUpdate(row.original.sedo_id)}
+  className={`${
+    !handleBulkUpdate
+      ? 'text-gray-400 cursor-not-allowed'
+      : 'text-blue-600 hover:text-blue-800'
+  }`}
+  title="Обновить"
+  disabled={!handleBulkUpdate}
+>
+  <RotateCcw className="w-4 h-4" />
+</button>
     <span className="text-xs text-gray-500">
       обн: {format(parseISO(row.original.updated_at), 'dd.MM.yyyy HH:mm')}
     </span>
@@ -414,13 +424,17 @@ const handleUpdate = (sedo_id) => {
             Показать без срока
           </label>
         </div>
-        <button
-          disabled={selected.size === 0}
-          onClick={handleBulkUpdate}
-          className={`px-4 py-2 text-sm rounded ${selected.size ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600 cursor-not-allowed'}`}
-        >
-          Обновить информацию
-        </button>
+<button
+  disabled={selected.size === 0 || isBulkUpdating}
+  onClick={handleBulkUpdate}
+  className={`px-4 py-2 text-sm rounded ${
+    selected.size === 0 || isBulkUpdating
+      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+      : 'bg-blue-600 text-white'
+  }`}
+>
+  {isBulkUpdating ? 'Обновляется…' : 'Обновить информацию'}
+</button>
       </div>
 
       <div className="text-sm text-gray-600 py-2">
@@ -430,8 +444,10 @@ const handleUpdate = (sedo_id) => {
       <div className="overflow-auto rounded-lg border border-gray-300 shadow-sm h-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
         <table className="min-w-full text-sm text-left bg-white border-separate border-spacing-0">
           <thead className="bg-white sticky top-0 z-10 shadow-sm">
+            
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id} className="bg-gray-100 border-b text-gray-700">
+                <th></th>
                 {headerGroup.headers.map(header => {
                   const isSortable = header.column.getCanSort();
                   return (
@@ -455,15 +471,37 @@ const handleUpdate = (sedo_id) => {
               </tr>
             ))}
           </thead>
-          <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr key={row.id} className="bg-gray-50 border-b hover:bg-gray-100 transition-colors">
-                {row.getVisibleCells().map(cell =>
-                  flexRender(cell.column.columnDef.cell, cell.getContext())
-                )}
-              </tr>
-            ))}
-          </tbody>
+            
+<tbody>
+  {table.getRowModel().rows.map(row => {
+    const id = Number(row.original.sedo_id);
+    const isFirst = row.original._isFirst;
+    const span = row.original._groupSize;
+
+    return (
+      <tr
+        key={row.id}
+        className="bg-gray-50 border-b hover:bg-gray-100 transition-colors"
+      >
+        {isFirst && (
+          <td rowSpan={span} className="px-2 py-3 border-b border-gray-200">
+            <input
+              type="checkbox"
+              checked={selected.has(id)}
+              onChange={() => toggleSelect(id)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded appearance-auto"
+            />
+          </td>
+        )}
+
+        {row.getVisibleCells().map(cell =>
+          flexRender(cell.column.columnDef.cell, cell.getContext())
+        )}
+      </tr>
+    );
+  })}
+</tbody>
+            
         </table>
         {isLoading && (
           <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
