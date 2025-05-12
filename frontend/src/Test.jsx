@@ -308,7 +308,8 @@ export default function ParentChildTable({ data, id }) {
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-4">
         <select
           value={selectedPerson || ''}
           onChange={(e) => setSelectedPerson(e.target.value || null)}
@@ -329,6 +330,10 @@ export default function ParentChildTable({ data, id }) {
           />
           Показать без срока
         </label>
+      </div>
+      </div>
+      <div className="text-sm text-gray-600 py-2">
+        Всего: <span className="font-semibold">{filteredData.length}</span>
       </div>
 
       <div className="overflow-auto rounded-lg border border-gray-300 shadow-sm h-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
