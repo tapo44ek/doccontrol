@@ -1281,9 +1281,35 @@ class DataService:
                 print(future.result())
         return 'success'
 
-    async def run_update_data_and_wait(self, params: dict) -> dict:
+    def update_docs_by_list(self, doclist):
+        session, DNSID = self.get_session()
+        
+        with ProcessPoolExecutor(max_workers=50) as executor:
+            futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in doclist]
+
+            for future in futures:
+                print(future.result())
+        return
+
+    async def run_update_data_and_wait(self, params :dict) -> dict:
         try:
             result = await asyncio.to_thread(self.update_data, params)
             return {"status": "success", "result": result}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=traceback.print_exc())
+
+    async def run_update_list_docs(self, params :dict) -> dict:
+        try:
+            user_repository = UserRepository()
+            doclist = params['doclist']
+            params = await user_repository.get_user_info_by_id(params['user_id'])
+            params['doclist'] = doclist
+            params['boss1_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss1_sedo']) if params['boss1_sedo'] is not None else None)
+            params['boss2_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss2_sedo']) if params['boss2_sedo'] is not None else None)
+            params['boss3_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss3_sedo']) if params['boss3_sedo'] is not None else None)
+            print(params)
+            result = await asyncio.to_thread(self.update_docs_by_list, params['doclist'])
+            new_data = await self.doc_repository.get_docs_by_id(params)
+            return new_data
         except Exception as e:
             raise HTTPException(status_code=500, detail=traceback.print_exc())
