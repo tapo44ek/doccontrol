@@ -1,12 +1,20 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import RefreshButton from './RefreshButton';
 import TableContainer from './TableContainer';
 
 function Page({ id }) {
   const tableRef = useRef();
   const [minUpdatedAt, setMinUpdatedAt] = useState(null);
+  const [now, setNow] = useState(new Date());
 
-  const now = new Date();
+    useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const isBlocked = minUpdatedAt && minUpdatedAt > oneHourAgo;
   const nextAvailableTime = isBlocked
