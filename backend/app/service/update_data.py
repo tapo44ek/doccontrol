@@ -1268,14 +1268,14 @@ class DataService:
         date_to = datetime.now() + timedelta(days=params['end_d_days'])
 
         db_doc_ids = self.doc_repository.get_docs_to_update(params=params)
-        # print(db_doc_ids)
-        # exit()
+        db_doc_ids = [str(x) for x in db_doc_ids]
 
         session, DNSID = self.get_session()
         doc_ids = self.get_doc_ids(date_from, date_to, fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
         full_doc_ids = list(dict.fromkeys(db_doc_ids + doc_ids))
+
         with ProcessPoolExecutor(max_workers=50) as executor:
-            futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
+            futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in full_doc_ids]
 
             for future in futures:
                 print(future.result())
