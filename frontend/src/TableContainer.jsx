@@ -1,63 +1,61 @@
-import { useEffect, useState } from 'react'
-import './App.css'
-import './Test'
-import ParentChildTable from './Test'
+import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import ParentChildTable from './Test';
 
-function TableContainer({ id }) {
-  const [count, setCount] = useState(0)
+const TableContainer = forwardRef(({ id, onMinUpdatedAtChange }, ref) => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const payload = {
-          user_id: id
-        };
+  const fetchData = async () => {
+    try {
+      const payload = { user_id: id };
 
-        const response = await fetch('http://10.9.96.160:5152/doccontrol/user', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+      const response = await fetch('http://10.9.96.160:5152/doccontrol/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-        if (!response.ok) {
-          throw new Error(`Ошибка сервера: ${response.status}`);
-        }
+      if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
 
-        const responseData = await response.json();
-        setData(responseData);
-      } catch (err) {
-        console.error('Ошибка при запросе:', err);
-        setError(err.message);
+      const responseData = await response.json();
+      setData(responseData);
+
+      const allDates = responseData
+        .map(item => item.updated_at)
+        .filter(Boolean)
+        .map(str => new Date(str));
+
+      if (allDates.length > 0) {
+        const minUpdatedAt = new Date(Math.min(...allDates));
+        onMinUpdatedAtChange?.(minUpdatedAt);
       }
-    };
 
+    } catch (err) {
+      console.error('Ошибка при запросе:', err);
+      setError(err.message);
+    }
+  };
+
+  // 🔁 наружу доступен fetchData как refetch
+  useImperativeHandle(ref, () => ({
+    refetch: fetchData
+  }));
+
+  useEffect(() => {
     fetchData();
   }, []);
 
-  if (error) {
-    return <div className="text-red-500">Ошибка: {error}</div>;
-  }
+  if (error) return <div className="text-red-500">Ошибка: {error}</div>;
 
   if (!data) {
-    return   <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
-    Загрузка…
-  </div>;
+    return (
+      <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
+        Загрузка…
+      </div>
+    );
   }
 
-  return (
-    <>
-      <div>
+  return <ParentChildTable data={data} id={id} />;
+});
 
-        <ParentChildTable data={data} id={id} />
-        
-      </div>
-      
-    </>
-  )
-}
-
-export default TableContainer
+export default TableContainer;
