@@ -114,9 +114,10 @@ class SedoData:
                 database=ProjectManagementSettings.DB_NAME
             )
         cursor = connection.cursor()
-
+        doc_ids = set()
         rows = []
         for item in data:
+            doc_ids.add(int(item['doc_id']))
             row = (
                 item['id'],
                 item.get('parent_id'),
@@ -131,7 +132,14 @@ class SedoData:
             )
             rows.append(row)
 
+
+
         try:
+
+            if doc_ids:
+                query = "DELETE FROM public.flat_resolution WHERE doc_id = ANY(%s)"
+                cursor.execute(query, (list(doc_ids),))
+
             execute_values(cursor, """
                 INSERT INTO public.flat_resolution (
                     id, parent_id, doc_id, author_id, date, dl, type,
