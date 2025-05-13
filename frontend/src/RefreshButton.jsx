@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function RefreshButton({ onSuccess , id}) {
+export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTime }) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -11,17 +11,17 @@ export default function RefreshButton({ onSuccess , id}) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ user_id: id }), // если нужно тело запроса
+        body: JSON.stringify({ user_id: id }),
       });
 
       if (!response.ok) {
         throw new Error(`Ошибка обновления: ${response.status}`);
       }
 
-      await response.json(); // если сервер возвращает что-то (даже пустой объект)
+      await response.json();
 
       if (onSuccess) {
-        await onSuccess(); // если успех — вызываем перезагрузку данных таблицы
+        await onSuccess();
       }
     } catch (error) {
       console.error('Ошибка при обновлении:', error);
@@ -30,15 +30,24 @@ export default function RefreshButton({ onSuccess , id}) {
     }
   };
 
+  const isBlocked = loading || disabled;
+
+  const buttonText = loading
+    ? 'Обновление...'
+    : disabled && nextAvailableTime
+      ? `Обновление доступно с ${nextAvailableTime.toLocaleTimeString()}`
+      : 'Обновить все';
+
   return (
     <button
       onClick={handleClick}
-      disabled={loading}
+      disabled={isBlocked}
       className={`px-4 py-2 rounded text-white font-semibold transition ${
-        loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+        isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
       }`}
+      title={disabled && nextAvailableTime ? `Доступно в ${nextAvailableTime.toLocaleTimeString()}` : ''}
     >
-      {loading ? 'Обновление...' : 'Обновить данные'}
+      {buttonText}
     </button>
   );
 }

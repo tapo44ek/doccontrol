@@ -7,6 +7,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { parseISO, format, isValid } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { RotateCcw } from 'lucide-react';
 
 const parseChildren = (controls) => {
   if (Array.isArray(controls)) return controls;
@@ -20,6 +21,8 @@ const parseChildren = (controls) => {
     return [];
   }
 };
+
+
 
 const processData = (data) => {
   return data.flatMap(item => {
@@ -83,6 +86,7 @@ const DateBadge = ({ date }) => {
   );
 };
 
+
 export default function ParentChildTable({ data, id }) {
   const [sorting, setSorting] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
@@ -90,6 +94,26 @@ export default function ParentChildTable({ data, id }) {
   const [showNoDue, setShowNoDue] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [bossNames, setBossNames] = useState({ boss1: null, boss2: null, boss3: null });
+  const [selected, setSelected] = useState(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [updatingDocs, setUpdatingDocs] = useState([]);
+
+  const toggleSelect = (res_id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(res_id) ? next.delete(res_id) : next.add(res_id);
+      return next;
+    });
+  };
+
+  // const handleUpdate = (res_id) => {
+  //   alert(`Обновление письма с res_id = ${res_id}`);
+  // };
+
+  // const handleBulkUpdate = () => {
+  //   alert(`Обновление писем: ${Array.from(selected).join(', ')}`);
+  // };
+
 
   useEffect(() => {
     const loadBossNames = async () => {
@@ -133,14 +157,66 @@ export default function ParentChildTable({ data, id }) {
     }
   };
 
-  const tableData = useMemo(() => {
-    if (showNoDue) {
-      return [...data, ...noDueData].filter(
-        (item, index, self) => index === self.findIndex(el => el.res_id === item.res_id)
-      );
+const [tableData, setTableData] = useState([...data]);
+
+useEffect(() => {
+  setTableData([...data]);
+}, [data]);
+
+useEffect(() => {
+  if (!showNoDue || noDueData.length === 0) return;
+  setTableData(prev => {
+    const existing = new Set(prev.map(el => el.res_id));
+    const toAdd = noDueData.filter(el => !existing.has(el.res_id));
+    return [...prev, ...toAdd];
+  });
+}, [showNoDue, noDueData]);
+
+
+// 3. Универсальный handler обновления
+const handleUpdateMany = async (doclist) => {
+  if (!doclist || doclist.length === 0) return;
+
+  const isBulk = doclist.length > 0;
+  if (isBulk) setIsBulkUpdating(true);
+  else setUpdatingDocs(prev => [...prev, doclist[0]]); // << заменить Set на Array
+
+  try {
+    const res = await fetch('http://10.9.96.160:5152/update/docs_by_id', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: id, doclist }),
+    });
+
+    if (!res.ok) throw new Error('Ошибка обновления');
+
+    const updatedDocs = await res.json();
+    const map = new Map(updatedDocs.map(doc => [doc.sedo_id, doc]));
+    setTableData(prev =>
+      prev.map(item => map.has(item.sedo_id) ? map.get(item.sedo_id) : item)
+    );
+    setSelected(new Set());
+  } catch (e) {
+    console.error('Ошибка при обновлении:', e);
+  } finally {
+    if (isBulk) {
+      setIsBulkUpdating(false);
+    } else {
+      setUpdatingDocs(prev => prev.filter(id => id !== doclist[0]));
     }
-    return data;
-  }, [showNoDue, data, noDueData]);
+  }
+};
+
+
+
+const handleBulkUpdate = () => {
+  const doclist = Array.from(selected);
+  handleUpdateMany(doclist);
+};
+
+const handleUpdate = (sedo_id) => {
+  handleUpdateMany([sedo_id]);
+};
 
   const flatData = useMemo(() => processData(tableData), [tableData]);
 
@@ -161,22 +237,40 @@ export default function ParentChildTable({ data, id }) {
 
   const columns = useMemo(() => {
     const base = [
+
       {
         accessorKey: 'dgi_number',
         enableSorting: true,
         header: '№ ДГИ',
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200">
-              <a
-                href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
-                className="text-blue-600 underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {row.getValue('dgi_number')}
-              </a>
-            </td>
+<td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200">
+  <a
+    href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
+    className="text-blue-600 underline block"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {row.getValue('dgi_number')}
+  </a>
+  <div className="flex items-center gap-1 mt-1">
+<button
+  onClick={() => handleUpdate(row.original.sedo_id)}
+  className={`${
+    !handleBulkUpdate
+      ? 'text-gray-400 cursor-not-allowed'
+      : 'text-blue-600 hover:text-blue-800'
+  }`}
+  title="Обновить"
+  disabled={!handleBulkUpdate}
+>
+  <RotateCcw className="w-4 h-4" />
+</button>
+    <span className="text-xs text-gray-500">
+      обн: {format(parseISO(row.original.updated_at), 'dd.MM.yyyy HH:mm')}
+    </span>
+  </div>
+</td>
           ),
         size: 100,
       },
@@ -302,36 +396,47 @@ export default function ParentChildTable({ data, id }) {
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    debugTable: false,
+    getSortedRowModel: getSortedRowModel()
   });
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
       <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-4">
-        <select
-          value={selectedPerson || ''}
-          onChange={(e) => setSelectedPerson(e.target.value || null)}
-          className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">Все исполнители</option>
-          {personOptions.map(person => (
-            <option key={person} value={person}>{person}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-4">
+          <select
+            value={selectedPerson || ''}
+            onChange={(e) => setSelectedPerson(e.target.value || null)}
+            className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Все исполнители</option>
+            {personOptions.map(person => (
+              <option key={person} value={person}>{person}</option>
+            ))}
+          </select>
 
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showNoDue}
-            onChange={handleCheckboxToggle}
-            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-          />
-          Показать без срока
-        </label>
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showNoDue}
+              onChange={handleCheckboxToggle}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+            />
+            Показать без срока
+          </label>
+        </div>
+<button
+  disabled={selected.size === 0 || isBulkUpdating}
+  onClick={handleBulkUpdate}
+  className={`px-4 py-2 text-sm rounded ${
+    selected.size === 0 || isBulkUpdating
+      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+      : 'bg-blue-600 text-white'
+  }`}
+>
+  {isBulkUpdating ? 'Обновляется…' : 'Обновить выбранное'}
+</button>
       </div>
-      </div>
+
       <div className="text-sm text-gray-600 py-2">
         Всего: <span className="font-semibold">{filteredData.length}</span>
       </div>
@@ -339,8 +444,10 @@ export default function ParentChildTable({ data, id }) {
       <div className="overflow-auto rounded-lg border border-gray-300 shadow-sm h-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
         <table className="min-w-full text-sm text-left bg-white border-separate border-spacing-0">
           <thead className="bg-white sticky top-0 z-10 shadow-sm">
+            
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id} className="bg-gray-100 border-b text-gray-700">
+                <th></th>
                 {headerGroup.headers.map(header => {
                   const isSortable = header.column.getCanSort();
                   return (
@@ -364,21 +471,43 @@ export default function ParentChildTable({ data, id }) {
               </tr>
             ))}
           </thead>
-          <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr key={row.id} className="bg-gray-50 border-b hover:bg-gray-100 transition-colors">
-                {row.getVisibleCells().map(cell =>
-                  flexRender(cell.column.columnDef.cell, cell.getContext())
-                )}
-              </tr>
-            ))}
-          </tbody>
+            
+<tbody>
+  {table.getRowModel().rows.map(row => {
+    const id = Number(row.original.sedo_id);
+    const isFirst = row.original._isFirst;
+    const span = row.original._groupSize;
+
+    return (
+      <tr
+        key={row.id}
+        className="bg-gray-50 border-b hover:bg-gray-100 transition-colors"
+      >
+        {isFirst && (
+          <td rowSpan={span} className="px-2 py-3 border-b border-gray-200">
+            <input
+              type="checkbox"
+              checked={selected.has(id)}
+              onChange={() => toggleSelect(id)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded appearance-auto"
+            />
+          </td>
+        )}
+
+        {row.getVisibleCells().map(cell =>
+          flexRender(cell.column.columnDef.cell, cell.getContext())
+        )}
+      </tr>
+    );
+  })}
+</tbody>
+            
         </table>
         {isLoading && (
-  <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
-    Загрузка…
-  </div>
-)}
+          <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center text-lg font-medium text-gray-700">
+            Загрузка…
+          </div>
+        )}
       </div>
     </div>
   );
