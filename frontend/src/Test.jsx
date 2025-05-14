@@ -96,7 +96,14 @@ export default function ParentChildTable({ data, id }) {
   const [bossNames, setBossNames] = useState({ boss1: null, boss2: null, boss3: null });
   const [selected, setSelected] = useState(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-  const [updatingDocs, setUpdatingDocs] = useState([]);
+  const [dueFilter, setDueFilter] = useState(new Set());
+  const clearDueFilter = () => setDueFilter(new Set());
+
+  const handleClearAllFilters = () => {
+  clearDueFilter();           // очищает dueFilter
+  setSelectedPerson(null);    // сбрасывает выбранного исполнителя
+  setShowNoDue(false);        // сбрасывает галочку "показать без срока"
+};
 
   const toggleSelect = (res_id) => {
     setSelected(prev => {
@@ -218,11 +225,62 @@ const handleUpdate = (sedo_id) => {
   handleUpdateMany([sedo_id]);
 };
 
-  const flatData = useMemo(() => processData(tableData), [tableData]);
+const toggleDueFilter = (key) => {
+  setDueFilter(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+};
 
-  const filteredData = useMemo(() => {
-    return selectedPerson ? filterByPerson(flatData, selectedPerson) : flatData;
-  }, [flatData, selectedPerson]);
+const fullData = useMemo(() => {
+  const base = [...data];
+  if (showNoDue && noDueData.length > 0) {
+    const baseIds = new Set(base.map(el => el.res_id));
+    const toAdd = noDueData.filter(el => !baseIds.has(el.res_id));
+    return [...base, ...toAdd];
+  }
+  return base;
+}, [data, noDueData, showNoDue]);
+
+const flatData = useMemo(() => processData(fullData), [fullData]);
+
+const filteredData = useMemo(() => {
+  let result = [...flatData];
+
+  if (selectedPerson) {
+    result = filterByPerson(result, selectedPerson);
+  }
+
+  if (dueFilter.size > 0) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    result = result.filter(row => {
+      const rawDue = row.executor_due_date;
+
+      const children = parseChildren(row.children_controls);
+      if ((!row.children_controls || children.length === 0) && dueFilter.has('none')) {
+        return true;
+      }
+
+      if (!rawDue) return false;
+
+      const date = new Date(rawDue);
+      date.setHours(0, 0, 0, 0);
+
+      return (
+        (dueFilter.has('today') && date.getTime() === today.getTime()) ||
+        (dueFilter.has('tomorrow') && date.getTime() === tomorrow.getTime())
+      );
+    });
+  }
+
+  return result;
+}, [flatData, selectedPerson, dueFilter]);
 
   const personOptions = useMemo(() => {
     const persons = new Set();
@@ -401,42 +459,122 @@ const handleUpdate = (sedo_id) => {
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <select
-            value={selectedPerson || ''}
-            onChange={(e) => setSelectedPerson(e.target.value || null)}
-            className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Все исполнители</option>
-            {personOptions.map(person => (
-              <option key={person} value={person}>{person}</option>
-            ))}
-          </select>
+<div className="flex items-center justify-between mb-4">
+  <div className="flex items-center gap-6 flex-wrap">
 
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={showNoDue}
-              onChange={handleCheckboxToggle}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-            />
-            Показать без срока
-          </label>
+    {/* Блок "Исполнители" */}
+    <div className="flex flex-col items-center">
+      <span className="text-sm text-gray-500 mb-1 text-center">Исполнители</span>
+      <div className="flex gap-4 items-center">
+        <select
+          value={selectedPerson || ''}
+          onChange={(e) => setSelectedPerson(e.target.value || null)}
+          className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">Все исполнители</option>
+          {personOptions.map(person => (
+            <option key={person} value={person}>{person}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    {/* Вертикальная линия */}
+    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+
+    {/* Блок "Показать без срока" */}
+    <div className="flex flex-col items-center">
+      <span className="text-sm text-gray-500 mb-1 text-center">Без срока</span>
+      <div className="flex gap-4 items-center py-2">
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showNoDue}
+            onChange={handleCheckboxToggle}
+            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+          />
+          Показать
+        </label>
+      </div>
+    </div>
+
+    
+    
+    {/* Вертикальная линия */}
+    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+
+    {/* Блок фильтров */}
+    <div className="flex items-start gap-6 flex-wrap">
+
+      {/* Сроки */}
+      <div className="flex flex-col items-center">
+        <span className="text-sm text-gray-500 mb-1 text-center">Сроки</span>
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { key: 'today', label: 'Сегодня' },
+            { key: 'tomorrow', label: 'Завтра' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => toggleDueFilter(key)}
+              className={`px-2 py-1 rounded text-sm border ${
+                dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-<button
-  disabled={selected.size === 0 || isBulkUpdating}
-  onClick={handleBulkUpdate}
-  className={`px-4 py-2 text-sm rounded ${
-    selected.size === 0 || isBulkUpdating
-      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-      : 'bg-blue-600 text-white'
-  }`}
->
-  {isBulkUpdating ? 'Обновляется…' : 'Обновить выбранное'}
-</button>
       </div>
 
+      {/* Вертикальная линия */}
+    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+
+      {/* Роспись */}
+      <div className="flex flex-col items-center">
+        <span className="text-sm text-gray-500 mb-1 text-center">Роспись</span>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            key="none"
+            onClick={() => toggleDueFilter('none')}
+            className={`px-2 py-1 rounded text-sm border ${
+              dueFilter.has('none') ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+            }`}
+          >
+            Не расписано
+          </button>
+        </div>
+      </div>
+
+      {/* Вертикальная линия */}
+    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+
+      {/* Сброс фильтров */}
+      <div className="flex flex-col items-center">
+        <span className="text-sm text-gray-500 mb-1 invisible">Сброс</span>
+        <button
+          onClick={handleClearAllFilters}
+          className="px-2 py-1 rounded text-sm border bg-white text-gray-700"
+        >
+          Сбросить фильтры
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Кнопка массового обновления */}
+  <button
+    disabled={selected.size === 0 || isBulkUpdating}
+    onClick={handleBulkUpdate}
+    className={`px-4 py-2 text-sm rounded ${
+      selected.size === 0 || isBulkUpdating
+        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+        : 'bg-blue-600 text-white'
+    }`}
+  >
+    {isBulkUpdating ? 'Обновляется…' : 'Обновить выбранное'}
+  </button>
+</div>
       <div className="text-sm text-gray-600 py-2">
         Всего: <span className="font-semibold">{filteredData.length}</span>
       </div>
@@ -481,15 +619,15 @@ const handleUpdate = (sedo_id) => {
     return (
       <tr
         key={row.id}
-        className="bg-gray-50 border-b hover:bg-gray-100 transition-colors"
+        // className="bg-gray-50 border-b hover:bg-gray-100 transition-colors"
       >
         {isFirst && (
-          <td rowSpan={span} className="px-2 py-3 border-b border-gray-200">
+          <td rowSpan={span} className="px-2 py-3 w-6 border-b border-gray-200">
             <input
               type="checkbox"
               checked={selected.has(id)}
               onChange={() => toggleSelect(id)}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded appearance-auto"
+              className="h-4 w-4 text-gray-600 border-gray-300 rounded appearance-auto"
             />
           </td>
         )}
