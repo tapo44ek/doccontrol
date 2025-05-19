@@ -1,4 +1,5 @@
 import { useState } from 'react';
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTime }) {
   const [loading, setLoading] = useState(false);
@@ -6,12 +7,9 @@ export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTi
   const handleClick = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://10.9.96.160:5152/update/user', {
+      const response = await fetch(`${backendUrl}/update/all_docs`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: id }),
+        credentials: "include",
       });
 
       if (!response.ok) {

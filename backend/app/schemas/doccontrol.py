@@ -10,5 +10,4 @@ class GetInfoUser(BaseModel):
     user_id: int
 
 class UpdateDocs(BaseModel):
-    user_id: int
     doclist: list

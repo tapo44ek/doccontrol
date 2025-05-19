@@ -30,7 +30,7 @@ class UserRepository:
         sql = '''
         SELECT sedo_id, name, boss1_sedo, boss2_sedo, boss3_sedo, start_d_days, end_d_days 
         FROM public.user 
-        WHERE id = $1 
+        WHERE uuid = $1 
         LIMIT 1
         '''
         try:
@@ -44,12 +44,12 @@ class UserRepository:
         except Exception as e:
             raise HTTPException(status_code=500, detail=e)
 
-    def no_pool_get_user_info_by_id(self, id :int) -> dict | None:
+    def no_pool_get_user_info_by_id(self, id :str) -> dict | None:
         
         sql = f'''
         SELECT sedo_id, name, boss1_sedo, boss2_sedo, boss3_sedo, start_d_days, end_d_days 
         FROM public.user 
-        WHERE id = {id} 
+        WHERE uuid = '{id}' 
         LIMIT 1
         '''
         connection = psycopg2.connect(

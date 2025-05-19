@@ -1,18 +1,18 @@
 import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import ParentChildTable from './Test';
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-const TableContainer = forwardRef(({ id, onMinUpdatedAtChange }, ref) => {
+const TableContainer = forwardRef(({ onMinUpdatedAtChange }, ref) => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   const fetchData = async () => {
     try {
-      const payload = { user_id: id };
+      // const payload = { user_id: id };
 
-      const response = await fetch('http://10.9.96.160:5152/doccontrol/user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const response = await fetch(`${backendUrl}/doccontrol/user`, {
+        method: 'GET',
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
@@ -55,7 +55,7 @@ const TableContainer = forwardRef(({ id, onMinUpdatedAtChange }, ref) => {
     );
   }
 
-  return <ParentChildTable data={data} id={id} />;
+  return <ParentChildTable data={data} />;
 });
 
 export default TableContainer;

@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { parseISO, format, isValid } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { RotateCcw } from 'lucide-react';
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const parseChildren = (controls) => {
   if (Array.isArray(controls)) return controls;
@@ -87,7 +88,7 @@ const DateBadge = ({ date }) => {
 };
 
 
-export default function ParentChildTable({ data, id }) {
+export default function ParentChildTable({ data }) {
   const [sorting, setSorting] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [noDueData, setNoDueData] = useState([]);
@@ -125,10 +126,9 @@ export default function ParentChildTable({ data, id }) {
   useEffect(() => {
     const loadBossNames = async () => {
       try {
-        const res = await fetch('http://10.9.96.160:5152/doccontrol/boss_names', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: id }),
+        const res = await fetch(`${backendUrl}/doccontrol/boss_names`, {
+          method: 'GET',
+          credentials: "include",
         });
         const data = await res.json();
         setBossNames(data); // { boss1: "Иванов", boss2: null, boss3: "Петрова" }
@@ -138,7 +138,7 @@ export default function ParentChildTable({ data, id }) {
     };
 
     loadBossNames();
-  }, [id]);
+  }, []);
 
   const handleCheckboxToggle = async () => {
     const next = !showNoDue;
@@ -147,10 +147,9 @@ export default function ParentChildTable({ data, id }) {
     if (next && noDueData.length === 0) {
       setIsLoading(true);
       try {
-        const res = await fetch('http://10.9.96.160:5152/doccontrol/user_wo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: id }),
+        const res = await fetch(`${backendUrl}/doccontrol/user_wo`, {
+          method: 'GET',
+          credentials: "include"
         });
   
         if (!res.ok) throw new Error('Ошибка при получении данных без срока');
@@ -189,10 +188,11 @@ const handleUpdateMany = async (doclist) => {
   else setUpdatingDocs(prev => [...prev, doclist[0]]); // << заменить Set на Array
 
   try {
-    const res = await fetch('http://10.9.96.160:5152/update/docs_by_id', {
+    const res = await fetch(`${backendUrl}/update/docs_by_id`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id, doclist }),
+      body: JSON.stringify({ doclist }),
+      credentials: "include",
     });
 
     if (!res.ok) throw new Error('Ошибка обновления');
