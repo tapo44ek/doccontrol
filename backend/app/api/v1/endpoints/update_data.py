@@ -4,6 +4,7 @@ from schemas.update_data import (
 )
 from schemas.doccontrol import GetInfoUser, UpdateDocs
 from service.update_data import DataService
+from repository.doccontrol import DocRepository
 from typing import Optional, List, Literal
 
 
@@ -16,6 +17,15 @@ async def get_controls(request: Request):
         raise HTTPException(status_code=401, detail="uuid не найден")
     dataservice = DataService()
     result = await dataservice.run_update_data_and_wait({"user_id": uuid})
+    return result
+
+@router.get("/check_status")
+async def get_env_status(request: Request):
+    uuid = request.cookies.get("uuid")
+    if not uuid:
+        raise HTTPException(status_code=401, detail="uuid не найден")
+    docrepository = DocRepository()
+    result = await docrepository.get_env_status()
     return result
 
 @router.patch("/docs_by_id")

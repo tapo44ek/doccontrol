@@ -2,7 +2,7 @@ import asyncpg
 import psycopg2
 from psycopg2.extras import execute_values
 from core.config import ProjectManagementSettings
-# from db import get_connection
+from db import get_connection
 from datetime import datetime
 from pathlib import Path
 import json
@@ -10,6 +10,82 @@ from fastapi import HTTPException
 from dateutil.parser import isoparse
 
 class SedoData:
+
+    async def set_env_update_on(self, uuid: str):
+        query_env = '''
+            UPDATE public.env
+            SET
+                is_working = TRUE,         -- или FALSE, если нужно
+                user_uuid = $1,
+                updated_at = NOW()
+            WHERE
+                id = 1;    
+        '''
+
+        query_history = '''
+        INSERT INTO public.history (env_id, user_uuid, started_at)
+        VALUES (1, $1, NOW());
+        '''
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_env, uuid)
+        except Exception as e:
+            raise HTTPException(500, detail=f"set env error: {str(e)}")
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_history, uuid)
+        except Exception as e:
+            raise HTTPException(500, detail=f"insert history error: {str(e)}")
+        
+        return {'status_code': '200', 'detail': 'success'}
+
+
+    async def set_env_update_off(self, uuid: str):
+        query_env = '''
+            UPDATE public.env
+            SET
+                is_working = FALSE,         -- или FALSE, если нужно
+                user_uuid = NULL,
+                updated_at = NOW()
+            WHERE
+                id = 1;    
+        '''
+
+        query_history = '''
+            UPDATE public.history
+            SET finished_at = NOW()
+            WHERE id = (
+                SELECT id
+                FROM public.history
+                WHERE user_uuid = $1
+                AND finished_at IS NULL
+                ORDER BY started_at DESC
+                LIMIT 1
+            );
+        '''
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_env)
+        except Exception as e:
+            raise HTTPException(500, detail=f"unset env error: {str(e)}")
+
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_env)
+                    await conn.execute(query_history, uuid)
+
+        except Exception as e:
+            raise HTTPException(500, detail=f"update history error: {str(e)}")
+
+        return {'status_code': '200', 'detail': 'success'}
+
 
     async def as_insert_resolutions_into_db(self, data: list):
 

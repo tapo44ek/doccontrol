@@ -33,6 +33,26 @@ class DocRepository:
         
         return [dict(row) for row in rows]
 
+    async def get_env_status(self):
+        query = '''
+            SELECT is_working
+            FROM public.env
+            WHERE id = 1
+            ORDER BY id ASC
+            LIMIT 1;
+        '''
+        async with get_connection() as conn:
+            row = await conn.fetchrow(query)
+            try:
+                if row is not None:
+                    print(row)
+                    return row  # тип bool: True / False
+                else:
+                    raise  HTTPException(status_code=404, detail='smth wrong with database, env for updating not found') # если записи нет
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+                
+
     async def get_docs_by_id(self, params: dict) -> list[dict]:
         sql_template = self.SQL_PATH_DOC_LIST.read_text(encoding="utf-8")
         query_params = [
