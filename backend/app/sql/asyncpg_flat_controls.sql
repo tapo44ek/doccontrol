@@ -143,24 +143,56 @@ boss3_due AS (
         ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
 ),
 
+recursive_children AS (
+    -- стартуем с initial_leafs.id (а не их детей!)
+    SELECT
+        fr.id AS current_id,
+        fr.parent_id,
+        fr.type,
+        fr.controls,
+        fr.author_id,
+        i.leaf_id AS origin_leaf_id
+    FROM initial_leafs i
+    JOIN flat_resolution fr ON fr.parent_id = i.leaf_id
+
+    UNION ALL
+
+    SELECT
+        fr.id,
+        fr.parent_id,
+        fr.type,
+        fr.controls,
+        fr.author_id,
+        rc.origin_leaf_id
+    FROM flat_resolution fr
+    JOIN recursive_children rc ON fr.parent_id = rc.current_id
+),
+
 child_controls AS (
     SELECT
-        fr.parent_id AS leaf_id,
-        jsonb_agg(
-            jsonb_build_object(
-                'person', c ->> 'person',
-                'due_date', c ->> 'due_date',
-                'closed_date', c ->> 'closed_date',
-                'is_control', c ->> 'is_control',
-                'modified_date', c ->> 'modified_date'
-            )
-        ) AS children_controls
-    FROM flat_resolution fr,
-         jsonb_array_elements(fr.controls) AS c
-    WHERE fr.type = 'Резолюция'
-      AND fr.author_id = $11
-      AND fr.parent_id IN (SELECT leaf_id FROM initial_leafs)
-    GROUP BY fr.parent_id
+        rc.origin_leaf_id AS leaf_id,
+jsonb_agg(
+    jsonb_build_object(
+        'person', c ->> 'person',
+        'due_date', c ->> 'due_date',
+        'closed_date', c ->> 'closed_date',
+        'is_control', c ->> 'is_control',
+        'modified_date', c ->> 'modified_date'
+    )
+) FILTER (
+    WHERE 
+        c ->> 'person' IS NOT NULL OR
+        c ->> 'due_date' IS NOT NULL OR
+        c ->> 'closed_date' IS NOT NULL OR
+        c ->> 'is_control' IS NOT NULL OR
+        c ->> 'modified_date' IS NOT NULL
+)
+         AS children_controls
+    FROM recursive_children rc,
+         jsonb_array_elements(rc.controls) AS c
+    WHERE rc.type = 'Резолюция'
+      AND rc.author_id = $11
+    GROUP BY rc.origin_leaf_id
 ),
 
 crazy AS (
