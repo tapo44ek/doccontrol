@@ -946,7 +946,8 @@ class DataService:
         #     document = BeautifulSoup(doccard, 'html.parser')
         doccard_table = document.find('table', attrs={"id": "maintable"})
         if doccard_table is None:
-            print('!!!!!!')
+            print('!!!!!! \n', doc_id, '\n !!!!!!!')
+            return 0
         answer_result = []
         recipients = []
         result = {
@@ -963,6 +964,7 @@ class DataService:
         "answer": answer_result,
         "description": ''
         }
+
         element = doccard_table.find_all('td', attrs={"data-tour":"1"}) # Номер документа 12
 
         for item in element:
@@ -1078,10 +1080,13 @@ class DataService:
     def get_test_tree_from_sample(self, document, doc_id):
 
         ts = datetime.now()
-
-        resolution_div = document.find('div', attrs={"id": "res-lugs"})\
-                                    .find('table', attrs={"class": "card s-resolutions-table"})\
-                                    .find("tbody").find_all('tr')
+        try:
+            resolution_div = document.find('div', attrs={"id": "res-lugs"})\
+                                        .find('table', attrs={"class": "card s-resolutions-table"})\
+                                        .find("tbody").find_all('tr')
+        except Exception as e:
+            print('!!!!!! \n', doc_id, '\n!!!!!!!\n', e)
+            return 0
 
         parsed_nodes = []
 
