@@ -170,12 +170,16 @@ useEffect(() => {
 }, [data]);
 
 useEffect(() => {
-  if (!showNoDue || noDueData.length === 0) return;
-  setTableData(prev => {
-    const existing = new Set(prev.map(el => el.res_id));
-    const toAdd = noDueData.filter(el => !existing.has(el.res_id));
-    return [...prev, ...toAdd];
-  });
+  if (showNoDue && noDueData.length > 0) {
+    setTableData(prev => {
+      const existing = new Set(prev.map(el => el.res_id));
+      const toAdd = noDueData.filter(el => !existing.has(el.res_id));
+      return [...prev, ...toAdd];
+    });
+  } else {
+    // фильтруем те, у кого нет executor_due_date (то есть "без срока")
+    setTableData(prev => prev.filter(el => el.executor_due_date));
+  }
 }, [showNoDue, noDueData]);
 
 
@@ -234,14 +238,14 @@ const toggleDueFilter = (key) => {
 };
 
 const fullData = useMemo(() => {
-  const base = [...data];
+  const base = [...tableData];
   if (showNoDue && noDueData.length > 0) {
     const baseIds = new Set(base.map(el => el.res_id));
     const toAdd = noDueData.filter(el => !baseIds.has(el.res_id));
     return [...base, ...toAdd];
   }
   return base;
-}, [data, noDueData, showNoDue]);
+}, [tableData, noDueData, showNoDue]);
 
 const flatData = useMemo(() => processData(fullData), [fullData]);
 

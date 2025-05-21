@@ -16,3 +16,6 @@ test_docs/*
 logins.py
 *.xlsx
 .env.*
+.DS_Store
+./*/DS_Store
+*.DS_Store
