@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.router import router
 from db import connect_to_db, close_db_connection
+from repository.update_data import SedoData
 
 app = FastAPI()
+
+sedo_data = SedoData()
 
 @app.on_event("startup")
 async def startup():
     await connect_to_db()
+    await sedo_data.set_env_update_off(uuid=None)
 
 @app.on_event("shutdown")
 async def shutdown():

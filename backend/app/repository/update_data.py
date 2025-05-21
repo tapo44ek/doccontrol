@@ -79,7 +79,8 @@ class SedoData:
             async with get_connection() as conn:
                 async with conn.transaction():
                     await conn.execute(query_env)
-                    await conn.execute(query_history, uuid)
+                    if uuid:
+                        await conn.execute(query_history, uuid)
 
         except Exception as e:
             raise HTTPException(500, detail=f"update history error: {str(e)}")
