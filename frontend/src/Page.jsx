@@ -36,7 +36,7 @@ function Page() {
 return (
   <>
     <title> Контроль</title>
-    <header className="flex items-center justify-between px-4 py-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+    <header className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center">
         <RefreshButton
           disabled={isBlocked}

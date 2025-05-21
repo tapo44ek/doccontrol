@@ -5,9 +5,10 @@ import {
   getSortedRowModel
 } from '@tanstack/react-table';
 import { useState, useMemo, useEffect } from 'react';
-import { parseISO, format, isValid } from 'date-fns';
+import { parseISO, format, isValid, parse } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { RotateCcw } from 'lucide-react';
+import { ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const parseChildren = (controls) => {
@@ -28,15 +29,55 @@ const parseChildren = (controls) => {
 const processData = (data) => {
   return data.flatMap(item => {
     const children = parseChildren(item.children_controls);
-    return children.length > 0
-      ? children.map((child, idx) => ({
-          ...item,
-          ...child,
-          _original: item,
-          _isFirst: idx === 0,
-          _groupSize: children.length
-        }))
-      : [{ ...item, _isFirst: true, _groupSize: 1 }];
+
+    if (children.length === 0) {
+      return [{ ...item, _isFirst: true, _groupSize: 1 }];
+    }
+
+    const groupedByPerson = new Map();
+
+    for (const child of children) {
+      const person = child.person || '___null___'; // подстраховка
+      const due = child.due_date ? new Date(child.due_date) : null;
+      const closed = child.closed_date;
+
+      if (!groupedByPerson.has(person)) {
+        groupedByPerson.set(person, []);
+      }
+
+      groupedByPerson.get(person).push({ ...child, _parsedDue: due, _isClosed: !!closed });
+    }
+
+    const selectedChildren = [];
+
+    for (const [person, items] of groupedByPerson.entries()) {
+      const openItems = items.filter(i => !i._isClosed);
+
+      if (openItems.length > 0) {
+        // выбрать ближайшую к сегодняшнему дню
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const closest = openItems.reduce((a, b) => {
+          const diffA = Math.abs((a._parsedDue?.getTime() ?? Infinity) - today.getTime());
+          const diffB = Math.abs((b._parsedDue?.getTime() ?? Infinity) - today.getTime());
+          return diffA < diffB ? a : b;
+        });
+
+        selectedChildren.push(closest);
+      } else {
+        // только закрытые — оставить одну
+        selectedChildren.push(items[0]);
+      }
+    }
+
+    return selectedChildren.map((child, idx) => ({
+      ...item,
+      ...child,
+      _original: item,
+      _isFirst: idx === 0,
+      _groupSize: selectedChildren.length
+    }));
   });
 };
 
@@ -56,23 +97,33 @@ const filterByPerson = (data, selectedPerson) => {
 const DateBadge = ({ date }) => {
   if (!date || typeof date !== 'string') return null;
 
-  let parsed = parseISO(date.trim());
+  let parsed = null;
+  const trimmed = date.trim();
 
+  // Пробуем ISO (2024-05-21)
+  parsed = parseISO(trimmed);
+
+  // Если не сработало — пробуем вручную несколько форматов
   if (!isValid(parsed)) {
-    const match = date.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const [, y, m, d] = match.map(Number);
-      parsed = new Date(y, m - 1, d);
+    const formats = ['dd.MM.yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd'];
+
+    for (const fmt of formats) {
+      parsed = parse(trimmed, fmt, new Date());
+      if (isValid(parsed)) break;
     }
   }
 
   if (!isValid(parsed)) {
-    console.error('DateBadge: Invalid date after all parsing attempts:', date);
+    console.error('DateBadge: нераспознанная дата:', date);
     return null;
   }
 
+  // Сравнение с сегодняшним днём
   const today = new Date();
-  const diff = (parsed.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24);
+  today.setHours(0, 0, 0, 0);
+  parsed.setHours(0, 0, 0, 0);
+
+  const diff = (parsed - today) / (1000 * 60 * 60 * 24);
 
   let badgeColor = 'bg-green-100 text-green-800';
   if (diff < 0) badgeColor = 'bg-red-100 text-red-800';
@@ -99,6 +150,7 @@ export default function ParentChildTable({ data }) {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [dueFilter, setDueFilter] = useState(new Set());
   const clearDueFilter = () => setDueFilter(new Set());
+  const [showFilters, setShowFilters] = useState(true);
 
   const handleClearAllFilters = () => {
   clearDueFilter();           // очищает dueFilter
@@ -306,7 +358,7 @@ const filteredData = useMemo(() => {
         header: '№ ДГИ',
         cell: ({ row }) =>
           row.original._isFirst && (
-<td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200">
+<td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200 text-xs">
   <a
     href={`https://mosedo.mos.ru/document.card.php?id=${row.original.sedo_id}`}
     className="text-blue-600 underline block"
@@ -326,9 +378,9 @@ const filteredData = useMemo(() => {
   title="Обновить"
   disabled={!handleBulkUpdate}
 >
-  <RotateCcw className="w-4 h-4" />
+  <RotateCcw className="w-3 h-3" />
 </button>
-    <span className="text-xs text-gray-500">
+    <span className="text-xs text-gray-500 text-[9px]">
       обн: {format(parseISO(row.original.updated_at), 'dd.MM.yyyy HH:mm')}
     </span>
   </div>
@@ -342,31 +394,48 @@ const filteredData = useMemo(() => {
         header: 'Дата',
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
               {new Date(row.getValue('date')).toLocaleDateString()}
             </td>
           ),
         size: 100,
       },
-      {
-        accessorKey: 'description',
-        enableSorting: true,
-        header: 'Содержание',
-        cell: ({ row }) =>
-          row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
-              {row.getValue('description')}
-            </td>
-          ),
-        size: 600,
-      },
+{
+  accessorKey: 'description',
+  enableSorting: true,
+  header: 'Содержание',
+  cell: ({ row }) => {
+    if (!row.original._isFirst) return null;
+
+    const full = row.getValue('description') || '';
+    const limit = 40;
+
+    const [expanded, setExpanded] = useState(false);
+    const short = full.slice(0, limit);
+
+    return (
+      <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b item-center border-gray-200 text-xs max-w-[350px]">
+        {expanded || full.length <= limit ? full : `${short}... `}
+        {full.length > limit && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-gray-600 hover:underline"
+          >
+            {expanded ? 'Скрыть' : <GripHorizontal />}
+          </button>
+        )}
+      </td>
+    );
+  },
+  size: 350,
+},
       {
         accessorKey: 'executor_due_date',
         enableSorting: true,
         header: 'Срок исполнения',
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
               <DateBadge date={row.getValue('executor_due_date')} />
             </td>
           ),
@@ -381,11 +450,11 @@ const filteredData = useMemo(() => {
         header: `Срок: ${bossNames.boss1}`,
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
               <DateBadge date={row.getValue('boss_due_date')} />
             </td>
           ),
-        size: 100,
+        size: 120,
       });
     }
   
@@ -396,11 +465,11 @@ const filteredData = useMemo(() => {
         header: `Срок: ${bossNames.boss2}`,
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
               <DateBadge date={row.getValue('boss2_due_date')} />
             </td>
           ),
-        size: 100,
+        size: 120,
       });
     }
   
@@ -411,11 +480,11 @@ const filteredData = useMemo(() => {
         header: `Срок: ${bossNames.boss3}`,
         cell: ({ row }) =>
           row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200">
+            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
               <DateBadge date={row.getValue('boss3_due_date')} />
             </td>
           ),
-        size: 100,
+        size: 200,
       });
     }
   
@@ -425,25 +494,33 @@ const filteredData = useMemo(() => {
         enableSorting: false,
         header: 'Исполнитель',
         cell: ({ row }) => (
-          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('person')}</td>
+          <td className="px-4 py-3 border-b border-gray-200 text-xs">{row.getValue('person')}</td>
         ),
         size: 150,
       },
-      {
-        accessorKey: 'due_date',
-        enableSorting: false,
-        header: 'Срок',
-        cell: ({ row }) => (
-          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('due_date')}</td>
-        ),
-        size: 100,
-      },
+{
+  accessorKey: 'due_date',
+  enableSorting: false,
+  header: 'Срок',
+  cell: ({ row }) => {
+    const closed = row.getValue('closed_date');
+    const due = row.getValue('due_date');
+    return (
+      <td className="px-4 py-3 border-b border-gray-200 text-xs">
+        {!closed ? <DateBadge date={due} /> :  <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>
+      {due}
+    </span> || '-'}
+      </td>
+    );
+  },
+  size: 100,
+},
       {
         accessorKey: 'closed_date',
         enableSorting: false,
         header: 'Дата закрытия',
         cell: ({ row }) => (
-          <td className="px-4 py-3 border-b border-gray-200">{row.getValue('closed_date')}</td>
+          <td className="px-4 py-3 border-b border-gray-200 text-xs"><span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>{row.getValue('closed_date')}</span></td>
         ),
         size: 100,
       }
@@ -463,123 +540,127 @@ const filteredData = useMemo(() => {
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
-<div className="flex items-center justify-between mb-4">
-  <div className="flex items-center gap-6 flex-wrap">
+<div className="mb-4">
+  <div className="flex justify-between items-center">
+    <button
+      onClick={() => setShowFilters(prev => !prev)}
+      className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+    >
+      {showFilters ? 'Скрыть фильтры' : 'Показать фильтры'}
+      {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+    </button>
+  </div>
 
-    {/* Блок "Исполнители" */}
-    <div className="flex flex-col items-center">
-      <span className="text-sm text-gray-500 mb-1 text-center">Исполнители</span>
-      <div className="flex gap-4 items-center">
-        <select
-          value={selectedPerson || ''}
-          onChange={(e) => setSelectedPerson(e.target.value || null)}
-          className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">Все исполнители</option>
-          {personOptions.map(person => (
-            <option key={person} value={person}>{person}</option>
-          ))}
-        </select>
-      </div>
-    </div>
+  {showFilters && (
+    <div className="flex items-center justify-between mt-2 gap-6 flex-wrap">
+      <div className="flex items-center gap-6 flex-wrap">
 
-    {/* Вертикальная линия */}
-    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+        {/* Блок "Исполнители" */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center">Исполнители</span>
+          <div className="flex gap-4 items-center">
+            <select
+              value={selectedPerson || ''}
+              onChange={(e) => setSelectedPerson(e.target.value || null)}
+              className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Все исполнители</option>
+              {personOptions.map(person => (
+                <option key={person} value={person}>{person}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-    {/* Блок "Показать без срока" */}
-    <div className="flex flex-col items-center">
-      <span className="text-sm text-gray-500 mb-1 text-center">Без срока</span>
-      <div className="flex gap-4 items-center py-2">
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showNoDue}
-            onChange={handleCheckboxToggle}
-            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-          />
-          Показать
-        </label>
-      </div>
-    </div>
+        <div className="w-px bg-gray-300 mx-1 self-stretch" />
 
-    
-    
-    {/* Вертикальная линия */}
-    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+        {/* Без срока */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center">Без срока</span>
+          <div className="flex gap-4 items-center py-2">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showNoDue}
+                onChange={handleCheckboxToggle}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+              Показать
+            </label>
+          </div>
+        </div>
 
-    {/* Блок фильтров */}
-    <div className="flex items-start gap-6 flex-wrap">
+        <div className="w-px bg-gray-300 mx-1 self-stretch" />
 
-      {/* Сроки */}
-      <div className="flex flex-col items-center">
-        <span className="text-sm text-gray-500 mb-1 text-center">Сроки</span>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { key: 'today', label: 'Сегодня' },
-            { key: 'tomorrow', label: 'Завтра' },
-          ].map(({ key, label }) => (
+        {/* Сроки */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center">Сроки</span>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'today', label: 'Сегодня' },
+              { key: 'tomorrow', label: 'Завтра' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => toggleDueFilter(key)}
+                className={`px-2 py-1 rounded text-sm border ${
+                  dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-px bg-gray-300 mx-1 self-stretch" />
+
+        {/* Роспись */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center">Роспись</span>
+          <div className="flex gap-2 flex-wrap">
             <button
-              key={key}
-              onClick={() => toggleDueFilter(key)}
+              key="none"
+              onClick={() => toggleDueFilter('none')}
               className={`px-2 py-1 rounded text-sm border ${
-                dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+                dueFilter.has('none') ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
               }`}
             >
-              {label}
+              Не расписано
             </button>
-          ))}
+          </div>
         </div>
-      </div>
 
-      {/* Вертикальная линия */}
-    <div className="w-px bg-gray-300 mx-1 self-stretch" />
+        <div className="w-px bg-gray-300 mx-1 self-stretch" />
 
-      {/* Роспись */}
-      <div className="flex flex-col items-center">
-        <span className="text-sm text-gray-500 mb-1 text-center">Роспись</span>
-        <div className="flex gap-2 flex-wrap">
+        {/* Сброс */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 invisible">Сброс</span>
           <button
-            key="none"
-            onClick={() => toggleDueFilter('none')}
-            className={`px-2 py-1 rounded text-sm border ${
-              dueFilter.has('none') ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
-            }`}
+            onClick={handleClearAllFilters}
+            className="px-2 py-1 rounded text-sm border bg-white text-gray-700"
           >
-            Не расписано
+            Сбросить фильтры
           </button>
         </div>
       </div>
 
-      {/* Вертикальная линия */}
-    <div className="w-px bg-gray-300 mx-1 self-stretch" />
-
-      {/* Сброс фильтров */}
-      <div className="flex flex-col items-center">
-        <span className="text-sm text-gray-500 mb-1 invisible">Сброс</span>
-        <button
-          onClick={handleClearAllFilters}
-          className="px-2 py-1 rounded text-sm border bg-white text-gray-700"
-        >
-          Сбросить фильтры
-        </button>
-      </div>
+      {/* Кнопка массового обновления */}
+      <button
+        disabled={selected.size === 0 || isBulkUpdating}
+        onClick={handleBulkUpdate}
+        className={`px-4 py-2 text-sm rounded ${
+          selected.size === 0 || isBulkUpdating
+            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+            : 'bg-blue-600 text-white'
+        }`}
+      >
+        {isBulkUpdating ? 'Обновляется…' : 'Обновить выбранное'}
+      </button>
     </div>
-  </div>
-
-  {/* Кнопка массового обновления */}
-  <button
-    disabled={selected.size === 0 || isBulkUpdating}
-    onClick={handleBulkUpdate}
-    className={`px-4 py-2 text-sm rounded ${
-      selected.size === 0 || isBulkUpdating
-        ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-        : 'bg-blue-600 text-white'
-    }`}
-  >
-    {isBulkUpdating ? 'Обновляется…' : 'Обновить выбранное'}
-  </button>
+  )}
 </div>
-      <div className="text-sm text-gray-600 py-2">
+      <div className="text-sm text-gray-600">
         Всего: <span className="font-semibold">{filteredData.length}</span>
       </div>
 
@@ -596,7 +677,7 @@ const filteredData = useMemo(() => {
                     <th
                       key={header.id}
                       onClick={isSortable ? header.column.getToggleSortingHandler() : undefined}
-                      className={`px-4 py-3 border-b border-gray-300 text-sm font-semibold ${
+                      className={`px-4 py-3 border-b border-gray-300 text-xs font-semibold ${
                         isSortable ? 'cursor-pointer hover:bg-gray-100' : ''
                       }`}
                       style={{ width: `${header.column.columnDef.size}px` }}
