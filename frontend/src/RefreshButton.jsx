@@ -4,9 +4,38 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL;
 export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTime }) {
   const [loading, setLoading] = useState(false);
 
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const checkStatusUntilReady = async () => {
+    while (true) {
+      try {
+        const res = await fetch(`${backendUrl}/update/check_status`, {
+          credentials: 'include',
+        });
+
+        if (!res.ok) {
+          throw new Error(`Ошибка статуса: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (!data.is_working) {
+          break; // закончить цикл — можно запускать update/all_docs
+        }
+      } catch (err) {
+        console.error('Ошибка при проверке статуса:', err);
+        break; // прерываем цикл при ошибке
+      }
+
+      await delay(10000); // подождать 10 секунд
+    }
+  };
+
   const handleClick = async () => {
     setLoading(true);
     try {
+      await checkStatusUntilReady();
+
       const response = await fetch(`${backendUrl}/update/all_docs`, {
         method: 'PATCH',
         credentials: "include",
