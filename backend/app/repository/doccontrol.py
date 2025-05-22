@@ -35,7 +35,7 @@ class DocRepository:
 
     async def get_env_status(self):
         query = '''
-            SELECT is_working
+            SELECT is_working, user_uuid
             FROM public.env
             WHERE id = 1
             ORDER BY id ASC

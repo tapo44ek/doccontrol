@@ -1,10 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTime }) {
+export default function RefreshButton({ onSuccess, id, disabled: propDisabled, nextAvailableTime }) {
   const [loading, setLoading] = useState(false);
+  const [serverReady, setServerReady] = useState(false); // Показывать кнопку или нет
+
+  const getCookieUUID = () => {
+    const match = document.cookie.match(/uuid=([^;]+)/);
+    return match ? match[1] : null;
+  };
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checkServerStatus = async () => {
+      const localUUID = getCookieUUID();
+
+      while (!isCancelled) {
+        try {
+          const res = await fetch(`${backendUrl}/update/check_status`, {
+            credentials: 'include',
+          });
+
+          if (!res.ok) {
+            throw new Error(`Ошибка статуса: ${res.status}`);
+          }
+
+          const data = await res.json();
+
+          if (data.user_uuid !== localUUID) {
+            setServerReady(true);
+            break; // условие достигнуто — перестаём проверять
+          }
+        } catch (err) {
+          console.error('Ошибка при проверке uuid:', err);
+          break;
+        }
+
+        await delay(10000);
+      }
+    };
+
+    checkServerStatus();
+
+    return () => {
+      isCancelled = true; // корректно завершаем при размонтировании
+    };
+  }, []);
 
   const checkStatusUntilReady = async () => {
     while (true) {
@@ -20,14 +65,14 @@ export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTi
         const data = await res.json();
 
         if (!data.is_working) {
-          break; // закончить цикл — можно запускать update/all_docs
+          break; // можно запускать обновление
         }
       } catch (err) {
         console.error('Ошибка при проверке статуса:', err);
-        break; // прерываем цикл при ошибке
+        break;
       }
 
-      await delay(10000); // подождать 10 секунд
+      await delay(10000);
     }
   };
 
@@ -57,11 +102,11 @@ export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTi
     }
   };
 
-  const isBlocked = loading || disabled;
+  const isBlocked = loading || propDisabled || !serverReady;
 
-  const buttonText = loading
+  const buttonText = loading || !serverReady
     ? 'Обновление...'
-    : disabled && nextAvailableTime
+    : propDisabled && nextAvailableTime
       ? `Обновление доступно с ${nextAvailableTime.toLocaleTimeString()}`
       : 'Обновить все';
 
@@ -72,7 +117,7 @@ export default function RefreshButton({ onSuccess, id, disabled, nextAvailableTi
       className={`px-4 py-2 rounded text-white font-semibold transition ${
         isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
       }`}
-      title={disabled && nextAvailableTime ? `Доступно в ${nextAvailableTime.toLocaleTimeString()}` : ''}
+      title={propDisabled && nextAvailableTime ? `Доступно в ${nextAvailableTime.toLocaleTimeString()}` : ''}
     >
       {buttonText}
     </button>
