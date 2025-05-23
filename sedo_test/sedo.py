@@ -13,6 +13,8 @@ import json
 from pprint import pprint
 import requests
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait
+from copy import deepcopy
+import json
 
 
 def make_search_doc_data(date_from, fio, sedo_id):
@@ -1329,26 +1331,375 @@ def process_doc(session, doc_id, DNSID):
 
     return f'doc insert = {doc_result}, res_insert = {res_result}'
 
+def get_sogl_info(path):
+    with open (path, 'r') as doccard:
+        document = BeautifulSoup(doccard, 'html.parser')
+
+    doccard_table = document.find('table', attrs={"class": "card maintable-width scrollable-section"})
+    if not doccard_table:
+        print('error')
+        return
+
+    answer_result = []
+    recipients = []
+    result = {
+    "sedo_id": 514605693,
+    "dgi_number": '',
+    "date": '',
+    "signed_by_id": None,
+    "signed_by_fio": '',
+    "signed_by_company": '',
+    "executor_id": None,
+    "executor_fio": '',
+    "executor_company": '',
+    "recipients": recipients,
+    "answer": answer_result,
+    "description": '',
+    'registered_id': None,
+    'registered_number': None
+    }
+    registered_number = None
+    registered_id = None
+    number = None
+    date = None
+    author_id = None
+    response_on_result = []
+    recipient = None
+    description = None
+
+
+    ## Номер регистрации
+    reg_num_soup = document.find('a', attrs={"class": "s-agree-subcomment__link"})
+    if reg_num_soup:
+        print(reg_num_soup)
+        print(type(reg_num_soup))
+        result['registered_number'] = reg_num_soup.text.strip()
+        registered_id = reg_num_soup.get('href')
+        match = re.search(r"id=(\d+)", registered_id)
+        result['registered_id'] = match.group(1) if match else None      
+
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"1"}) # Номер документа 12
+
+    for item in element:
+        try:
+            result["dgi_number"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+        except Exception as e: pass
+    
+    if result["dgi_number"] == '':
+        element = doccard_table.find_all('td', attrs={"data-tour":"12"}) # Номер документа 12
+
+        for item in element:
+            try:
+                result["dgi_number"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+            except Exception as e: pass
+    
+    element = doccard_table.find_all('td', attrs={"data-tour":"2"}) # Дата документа 13
+    for item in element:
+        try:
+            result["date"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+        except Exception as e: pass
+
+    if result['date'] == '':
+        element = doccard_table.find_all('td', attrs={"data-tour":"13"}) # Дата документа 13
+        for item in element:
+            try:
+                result["date"] = item.find('span', attrs={"class": "main-document-field"}).text.strip()
+            except Exception as e: pass
+    # ## Номер согла
+    # number_soup = doccard_table.find('td', attrs={"data-tour":"1"}) # Номер документа 1
+    # if number_soup:
+    #     el = number_soup.find('span', attrs={"class": "main-document-field"})
+    #     result['number'] = el.text.strip() if el else None
+    # else:
+    #     number_soup = doccard_table.find('td', attrs={"data-tour":"12"}) # Номер документа 12
+    #     if number_soup:
+    #         el = number_soup.find('span', attrs={"class": "main-document-field"})
+    #         result['number'] = el.text.strip() if el else None
+
+
+    # ## Дата согла
+    # date_soup = doccard_table.find('td', attrs={"data-tour":"2"}) # Дата документа 13
+    # if date_soup:
+    #     el = date_soup.find('span', attrs={"class": "main-document-field"})
+    #     result['date'] = el.text.strip() if el else None
+    # else:
+    #     date_soup = doccard_table.find('td', attrs={"data-tour":"13"}) # Дата документа 13
+    #     if date_soup:
+    #         el = date_soup.find('span', attrs={"class": "main-document-field"})
+    #         result['date'] = el.text.strip() if el else None
+
+####################
+    element = doccard_table.find_all('td', attrs={"data-tour":"14"}) # Подпись
+    for item in element:
+        try:
+            result["signed_by_id"] = item.find('span').get('axuiuserid')
+            result["signed_by_fio"] = item.find('span').strong.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    result["signed_by_company"] = match[0] # выводит: первый
+                else:
+                    try:
+                        result["signed_by_company"] = match[1]
+                    except:
+                        result["signed_by_company"] = 'Not Found'
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"15"}) # Исполнитель
+
+    for item in element:
+        try:
+            result["executor_id"] = item.find('span').get('axuiuserid')
+            result["executor_fio"] = item.find('span').b.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    result["executor_company"] = match[0] # выводит: первый
+                else:
+                    try:
+                        result["executor_company"] = match[1]
+                    except:
+                        result["executor_company"] = 'Not Found'
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"data-tour":"5"}) # На №
+
+    for item in element:
+        try:
+            answers = item.find_all('a')
+            prev_answer_id = 0
+            if answers:
+                for answer in answers:
+                    # print(answer)
+                    answer_id = answer.get('href')
+                    match = re.search(r"id=(\d+)", answer_id)
+                    answer_id = match.group(1) if match else None
+                    answer_text = answer.text.strip()
+                    if prev_answer_id != answer_id:
+                        answer_result.append({"answer_id": answer_id, "answer_text": answer_text})
+                    prev_answer_id = answer_id
+        except Exception as e: pass
+
+    element = doccard_table.find_all('td', attrs={"colspan": "3", "class": "td-1 highlightable b_new"})
+
+    for item in element:
+        if item.find('span').get('axuiuserid'):
+            rec_id = item.find('span').get('axuiuserid')
+            rec_fio = item.find('span').strong.text.strip()
+            company = item.find('span').text.strip()
+            match = re.findall(r'\((.*?)\)', company)
+            if match:
+                if "не направлять" not in match[0]:
+                    rec_company = match[0] # выводит: первый
+                else:
+                    try:
+                        rec_company = match[1]
+                    except:
+                        rec_company = 'Not Found'
+            recipients.append({"sedo_id": rec_id, "fio": rec_fio, "company": rec_company})
+
+    try:
+        result["description"] = doccard_table.find('td',
+                                     attrs={"data-tour":"20",
+                                     "class": "highlightable card-annotation-short-content b3"})\
+                                     .text.strip() # Краткое содержание
+    except Exception as e: pass
+
+    try:
+        result['started_at'] = document.find('table', attrs={'class': 's-agree-comment__table'}).find_all('tr')[2].find_all('td')[1].text.strip()
+    except Exception as e:
+        print(e)
+
+    result['structure'] = parse_sogl_structure(document)
+    # pprint(result)
+    return result
+####################
+
+
+def merge_redirect_status_to_previous(data):
+    result = []
+    last_redirected = {}  # (dl, sedo_id) → индекс перенаправленного элемента
+
+    for item in data:
+        key = (item["dl"], item["sedo_id"])
+
+        if key in last_redirected and item["status"] != "Перенаправлено":
+            prev_idx = last_redirected[key]
+            result[prev_idx]["status_after_redirect"] = item["status"]
+            result[prev_idx]["date_after_redirect"] = item["date"]
+            # не добавляем текущий
+        else:
+            result.append(deepcopy(item))
+
+            # сохраняем в last_redirected ТОЛЬКО если статус == Перенаправлено
+            if item["status"] == "Перенаправлено":
+                last_redirected[key] = len(result) - 1
+
+    return result
+
+def build_sogl_tree(flat_list):
+    tree = []
+    stack = []
+
+    for item in flat_list:
+        node = deepcopy(item)
+        node["z_children"] = []
+
+        dl = node["dl"]
+
+        if dl == 0:
+            tree.append(node)
+            stack = [node]
+        else:
+            # Найдём родителя на уровень выше
+            if dl <= len(stack) - 1:
+                stack = stack[:dl]  # обрезаем стек до нужной глубины
+
+            parent = stack[dl - 1]
+            parent["z_children"].append(node)
+
+            if len(stack) > dl:
+                stack[dl] = node
+            else:
+                stack.append(node)
+
+    return tree
+
+
+def parse_sogl_structure(document):
+    # with open (path, 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
+    chain = {}
+    sogl_type = None
+    dl = 0
+
+    number = None
+    fio = None
+    status = None
+    date = None
+    duration = None
+
+
+    sogl_table = document.find('tbody', attrs={"class": "agreetable__tbody"})
+    trs = sogl_table.find_all('tr')
+    nodes = []
+    row = {}
+    for i in range(len(trs)):
+        # if fio == 'Нестеренко А.И.':
+        #     print(trs[i])
+        # print(tr.get('class'))
+        if any(cls in trs[i].get('class', []) for cls in ['agreetable__head', 'agreetable-head']):
+            chain[dl] = trs[i].td.div.span.strong.text
+            continue
+        
+        if any(cls in trs[i].get('class', []) for cls in ['agreetable__tr--redirect']):
+            redirect = trs[i].find('td', attrs={"class": "agreetable__subhead"}).find('div', attrs={"class": "agreetable__redirect agreetable-redirect"})
+            if redirect.find('div', attrs={"class": "agreetable-redirect__title"}).text.strip() == "Перенаправление":
+                dl = dl + 1
+                sogl_type = redirect.find('div', attrs={"class": "agreetable-redirect__csdr-type"}).span.text.strip()
+                chain[dl] = sogl_type
+                continue
+        
+        if i != len(trs)-1:
+            # print(i)
+            # print(len(trs))
+            if any(cls in trs[i].get('class', []) for cls in ['agreetable__tr--first-level', 'agreetable__tr']) and not any(cls in trs[i].get('class', []) for cls in ['agreetable__redirect', 'agreetable-redirect', 'agreetable__head', 'agreetable-head']):
+                # print('in if')
+                tds = trs[i].find_all('td')
+                number = tds[0].text.strip()
+                fio = tds[1].span.text.strip().split('\n')[0]
+                status = tds[3].text.strip()
+                lines = [line.strip() for line in tds[3].span.stripped_strings]
+                status = lines[0]  # "Перенаправлено"
+                try: date = lines[1]
+                except Exception as e: date = None
+                sedo_id = tds[1].span.get('axuiuserid')
+                # print(chain)
+                row = {  # 🔥 создаём новый dict КАЖДЫЙ РАЗ
+                    'dl': dl,
+                    'type': chain[dl],
+                    'number': number,
+                    'fio': fio,
+                    'sedo_id': sedo_id,
+                    'status': status,
+                    'date': date
+                }
+                
+                # if any(item["fio"] == fio and item["status"] == "Перенаправлено" and item['dl'] == dl - 1 for item in nodes) and chain[dl] == 'параллельное':
+                if any(item["sedo_id"] == sedo_id and item["status"] == "Перенаправлено" and item['dl'] == dl - 1 for item in nodes):
+                    dl = dl - 1
+                    row['dl'] = dl
+                nodes.append(row)
+                # print(f'dl = {dl}, type = {chain[dl]}, number = {number}, fio = {fio}, status = {status.split()[0]}')
+                # if (chain[dl] == "последовательное") and ("Согласовано" in status) and (dl > 0) and not (any(cls in trs[i+1].get('class', []) for cls in ['agreetable__tr--redirect'])):
+                #     # print("YESSS")
+                #     dl = dl - 1
+                
+
+        else:
+            if any(cls in trs[i].get('class', []) for cls in ['agreetable__tr--first-level', 'agreetable__tr']) and not any(cls in trs[i].get('class', []) for cls in ['agreetable__redirect', 'agreetable-redirect', 'agreetable__head', 'agreetable-head']):
+                tds = trs[i].find_all('td')
+                number = tds[0].text.strip()
+                fio = tds[1].span.text.strip().split('\n')[0]
+                status = tds[3].text.strip()
+                lines = [line.strip() for line in tds[3].span.stripped_strings]
+                status = lines[0]  # "Перенаправлено"
+                try: date = lines[1]
+                except Exception as e: date = None
+                sedo_id = tds[1].span.get('axuiuserid')
+                row = {  # 🔥 создаём новый dict КАЖДЫЙ РАЗ
+                    'dl': dl,
+                    'type': chain[dl],
+                    'number': number,
+                    'fio': fio,
+                    'sedo_id': sedo_id,
+                    'status': status,
+                    'date': date
+                }
+                nodes.append(row)
+                print(f'dl = {dl}, type = {chain[dl]}, number = {number}, fio = {fio}, status = {status.split()[0]}')
+                # if (chain[dl] == "Последовательное") and ("Согласовано" in status):
+                #     dl = dl - 1
+    # # pprint(nodes)
+    # print("!!!!!!!!!!!!")
+    # # cleaned = merge_redirect_status_to_previous(nodes)
+
+    # # pprint(cleaned)
+    # # print("------------")
+    # pprint(build_sogl_tree(merge_redirect_status_to_previous(nodes)))
+        
+
+
+
+
+    # print(chain)
+    return build_sogl_tree(merge_redirect_status_to_previous(nodes))
 
 if __name__ == "__main__":
-    start = datetime.now()
-    print(start)
-    date_from = datetime(2025, 2, 23, 0, 0, 0)
-    date_to = datetime(2025, 6, 23, 0, 0, 0)
-    fio = 'Габитов Д.Ш.'
-    sedo_id = 78264321
-    session, DNSID = get_session()
-    doc_ids = get_doc_ids(date_from, date_to, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
-    pprint(doc_ids)
+    result = get_sogl_info('../test_docs/sogl_5.html')
+    with open("result.json", "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    # start = datetime.now()
+    # print(start)
+    # date_from = datetime(2025, 2, 23, 0, 0, 0)
+    # date_to = datetime(2025, 6, 23, 0, 0, 0)
+    # fio = 'Габитов Д.Ш.'
+    # sedo_id = 78264321
+    # session, DNSID = get_session()
+    # doc_ids = get_doc_ids(date_from, date_to, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
+    # pprint(doc_ids)
     
-    with ProcessPoolExecutor(max_workers=50) as executor:
-        futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
+    # with ProcessPoolExecutor(max_workers=50) as executor:
+    #     futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
 
-        for future in futures:
-            print(future.result())
+    #     for future in futures:
+    #         print(future.result())
 
-    print(len(doc_ids))
-    print(datetime.now() - start)
+    # print(len(doc_ids))
+    # print(datetime.now() - start)
 
     # with open ('./test_docs/debug1.html', 'r') as doccard:
     #     document = BeautifulSoup(doccard, 'html.parser')

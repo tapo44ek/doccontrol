@@ -9,7 +9,7 @@ if __name__ == '__main__':
     sedo_pass = os.environ.get("SEDO_PASS")
     s = requests.Session()
     url_auth = 'https://mosedo.mos.ru/auth.php?group_id=21'
-    data = {"DNSID": 'wcFDw9WVbMuoIfBOV9hvnAA',
+    data = {"DNSID": 'wDpflidjE1R_Nx6ajQDygnQ',
             "group_id": "21",
             "login": 'Арсеньев В.Д.',  # %C0%F0%F1%E5%ED%FC%E5%E2+%C2.%C4.
             "user_id": "80742170",  ##80742170 Арсеньеw ##78264321 Габитов
@@ -25,9 +25,9 @@ if __name__ == '__main__':
 
     DNSID = r.headers['location'].split('DNSID=')[1]
 
-    url = f'https://mosedo.mos.ru/document.card.php?id=548471399&DNSID={DNSID}'
+    url = f'https://mosedo.mos.ru/document.card.php?id=550975144&DNSID={DNSID}'
     response = s.get(url, verify=certifi.where())
     # Сохраняем как HTML-файл
-    with open("./test_docs/debug1.html", "w") as f:
+    with open("../test_docs/sogl_5.html", "w") as f:
         f.write(response.text)
     
