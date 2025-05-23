@@ -830,7 +830,7 @@ class DataService:
         due_group = []
         if dues is not None:
 
-            if dues.div.div.div is not None:
+            if dues.div.div is not None:
                 # z = 0
                 for divs in dues.children:
 
@@ -863,6 +863,30 @@ class DataService:
                                     if tag.name == "br":
                                         try:
                                             for blyat_tag in fckn_tag.children:
+                                                if tag.name == "br":
+                                                    # print(tag)
+                                                    try:
+                                                        for blyat_blyat_tag in blyat_tag.children:
+                                                            if not isinstance(blyat_blyat_tag, Tag):
+                                                                continue
+                                                            if 'resolution-executor-history' in blyat_blyat_tag.get('class', [''])[0]:
+                                                                man = parse_control_dates(blyat_blyat_tag)
+
+                                                                if current_group is not None:
+
+                                                                    if current_group == 0:
+                                                                        for i in range(len(man)):
+                                                                            man[i]['is_control'] = True
+
+                                                                    elif current_group == 1:
+                                                                        for i in range(len(man)):
+                                                                            man[i]['is_control'] = False
+
+                                                                    for m in man:
+                                                                        control_group.append(m)
+                                                    except Exception as e:
+                                                        pass
+
                                                 if not isinstance(blyat_tag, Tag):
                                                     continue
                                                 if 'resolution-executor-history' in blyat_tag.get('class', [''])[0]:
@@ -917,6 +941,8 @@ class DataService:
 
                                 for m in man:
                                     control_group.append(m)
+            # elif dues.div.div is not None:
+            #     print(dues)
 
         # print(control_group)
         if len(control_group) < 1:
