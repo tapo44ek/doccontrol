@@ -15,6 +15,176 @@ import requests
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait
 from copy import deepcopy
 import json
+from update_data import SedoData
+
+
+def make_search_sogl_data(fio, sedo_id):
+    # date_from = datetime.strftime(date_from, "%d.%m.%Y")
+
+    params = {
+        'check_all_documents': "1",
+        'type_0': "1",
+        'type_1': "1",
+        'type_2': "1",
+        'type_3': "1",
+        'type_12': "1",
+        'type_13': "1",
+        'type_4': "1",
+        'type_5': "1",
+        'check_all_projects': "1",
+        'project_type_1': "1",
+        'project_type_3': "1",
+        'project_type_13': "1",
+        'project_type_4': "1",
+        'project_type_5': "1",
+        'has_period': "1",
+        'year_from': "2009",
+        'year_to': f"{datetime.now().year}",
+        'org_name': 'ДГИгМ',
+        'org': "21",
+        'order_by': 'cdate',
+        'required_text': '',
+        'num': '',
+        'rdate_f': '',
+        'reg_user': '',
+        'reg_user_id': '',
+        'rdate_t': '',
+        'recipient': '',
+        'recipient_id': '',
+        'recipient_group': '',
+        'recipient_group_id': '',
+        'in_number': '',
+        'bound_number': '',
+        'contract_bound_number': '',
+        'recipient_org_id': "0",
+        'cl_out_num': '',
+        'cl_out_date_f': '',
+        'cl_out_date_t': '',
+        'cl_sign': '',
+        'cl_sign_id': '',
+        'cl_sign_group': '',
+        'cl_sign_group_id': '',
+        'cl_executor': '',
+        'cl_executor_id': '',
+        'cl_executor_group': '',
+        'cl_executor_group_id': '',
+        'cl_text': '',
+        'out_number': '',
+        'out_date_f': '',
+        'out_reg_user': '',
+        'out_reg_user_id': '',
+        'out_date_t': '',
+        'author': '',
+        'author_id': '',
+        'author_group': '',
+        'author_group_id': '',
+        'prepared_by': '',
+        'prepared_by_id': '',
+        'prepared_by_org_id': "0",
+        'curator': '',
+        'curator_id': '',
+        'short_content': '',
+        'document_kind': "0",
+        'delivery_type': '',
+        'document_special_kind': "0",
+        'external_id': '',
+        'has_manual_sign': "0",
+        'is_hand_shipping': "0",
+        'sign_type': "0",
+        'is_dsp': "0",
+        'is_urgent': "0",
+        'creator': '',
+        'creator_id': '',
+        'memo': '',
+        'send_date_f': '',
+        'send_date_t': '',
+        'info': '',
+        'info_author': '',
+        'info_author_id': '',
+        'info_date_f': '',
+        'info_date_t': '',
+        'og_file_number': "0",
+        'rec_vdelo': "0",
+        'vdelo_date_f': '',
+        'vdelo_date_t': '',
+        'vdelo_prepared': '',
+        'vdelo_prepared_id': '',
+        'vdelo_signed': '',
+        'vdelo_signed_id': '',
+        'vdelo_text': '',
+        'res_type': "0",
+        'res_urgency': "0",
+        'resolution_num': '',
+        'r_rdate_f': '',
+        'resolution_creator': '',
+        'resolution_creator_id': '',
+        'r_rdate_t': '',
+        'resolution_author': '',
+        'resolution_author_id': '',
+        'resolution_author_group': '',
+        'resolution_author_group_id': '',
+        'resolution_author_org_id': "0",
+        'r_special_control': "0",
+        'resolution_behalf': '',
+        'resolution_behalf_id': '',
+        'resolution_acting_author': '',
+        'resolution_acting_author_id': '',
+        'resolution_to': '',
+        'resolution_to_id': '',
+        'resolution_to_group': '',
+        'resolution_to_group_id': '',
+        'resolution_to_org_id': "0",
+        'res_project_letter': "0",
+        'res_curator': '',
+        'res_curator_id': '',
+        'r_control': "0",
+        'r_control_f': '',
+        'r_control_t': '',
+        'r_otv': "0",
+        'r_dback': "0",
+        'resolution_text': '',
+        'r_ef_reason_category_id': "0",
+        'r_ef_reason_id': "0",
+        'r_is_signed': "0",
+        'r_plus': "0",
+        'r_another_control': "0",
+        'r_oncontrol': "0",
+        'r_oncontrol_f': '',
+        'r_oncontrol_t': '',
+        'unset_control': "0",
+        'unset_control_f': '',
+        'unset_control_t': '',
+        're_date_f': '',
+        're_date_t': '',
+        're_author': '',
+        're_author_id': '',
+        're_author_group': '',
+        're_author_group_id': '',
+        're_acting_author': '',
+        're_acting_author_id': '',
+        're_is_interim': "-1",
+        're_text': '',
+        'docs_in_execution': "0",
+        're_doc_org_id': '',
+        'csdr_initiator': '',
+        'csdr_initiator_id': '',
+        'csdr_initiator_group': '',
+        'csdr_initiator_group_id': '',
+        'csdr_start': "0",
+        'csdr_stop': "2",
+        'csdr_current_version_only': "1",
+        'and[csdr][0]': "0",
+        'participant_name_0': f'{fio}',
+        'participant_name_0_id': f"{sedo_id}",
+        'participant_group_0': 'Департамент городского имущества города Москвы',
+        'participant_group_0_id': "21",
+        'csdr_has_deadline_0': "0",
+        'csdr_status_0': "0",
+        'csdr_init_date_0_f': '',
+        'csdr_init_date_0_t': ''
+    }
+
+    return params
 
 
 def make_search_doc_data(date_from, fio, sedo_id):
@@ -1298,6 +1468,52 @@ def get_doc_ids(date_from, date_to, fio, sedo_id, session, DNSID):
     return doc_ids
 
 
+def get_sogl_ids(fio, sedo_id, session, DNSID):
+    
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-User': '?1',
+        'Sec-Fetch-Dest': 'document'
+    }
+    data = make_search_sogl_data(fio, sedo_id)
+    url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
+    r2 = session.post(url_search, data=data, headers=headers)
+    first_soup = BeautifulSoup(r2.text, 'html.parser')
+
+    try:
+        count_doc = int(first_soup.find('span', class_='search-export__count').text.split(': ')[1])
+    except: count_doc = 1
+    count_pages = count_doc // 15 + 3
+    
+    all_pages = range(2, count_pages)  # страницы 2–153 включительно
+
+
+
+    doc_ids = []
+    docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+    for docs in docs_ids_soap:
+        try:
+            doc_ids.append(docs.get('data-docid'))
+        except: pass
+
+    def worker(page):
+        return process_doc_ids(session, DNSID, headers, page)
+
+    with ThreadPoolExecutor(max_workers=75) as executor:
+        results = list(executor.map(worker, all_pages))
+
+
+
+    # Склеиваем списки в один
+    flat_doc_ids = sum(results, [])
+    print (count_pages)
+    doc_ids = doc_ids + flat_doc_ids
+
+    return doc_ids
+
+
 def process_doc_ids(session, DNSID, headers, page):
     response = session.get(f'https://mosedo.mos.ru/document.php?perform_search=1&DNSID={DNSID}&page={page}', headers=headers)
     first_soup = BeautifulSoup(response.text, 'html.parser')
@@ -1319,6 +1535,16 @@ def process_doc_ids(session, DNSID, headers, page):
     doc_ids = [x for x in doc_ids if x is not None]
     return doc_ids
 
+def process_sogl(session, doc_id, DNSID):
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        response = session.get(f'https://mosedo.mos.ru/document.card.php?id={doc_id}&DNSID={DNSID}').text
+        bs = BeautifulSoup(response, 'html.parser')
+        future1 = executor.submit(get_sogl_info, bs, doc_id)
+        wait([future1])
+        sogl_result = future1.result()
+
+    return f'sogl insert = {sogl_result}'
+
 def process_doc(session, doc_id, DNSID):
     with ThreadPoolExecutor(max_workers=2) as executor:
         response = session.get(f'https://mosedo.mos.ru/document.card.php?id={doc_id}&DNSID={DNSID}').text
@@ -1331,9 +1557,9 @@ def process_doc(session, doc_id, DNSID):
 
     return f'doc insert = {doc_result}, res_insert = {res_result}'
 
-def get_sogl_info(path):
-    with open (path, 'r') as doccard:
-        document = BeautifulSoup(doccard, 'html.parser')
+def get_sogl_info(document, doc_id):
+    # with open (path, 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
 
     doccard_table = document.find('table', attrs={"class": "card maintable-width scrollable-section"})
     if not doccard_table:
@@ -1343,7 +1569,7 @@ def get_sogl_info(path):
     answer_result = []
     recipients = []
     result = {
-    "sedo_id": 514605693,
+    "sedo_id": doc_id,
     "dgi_number": '',
     "date": '',
     "signed_by_id": None,
@@ -1374,7 +1600,7 @@ def get_sogl_info(path):
         print(reg_num_soup)
         print(type(reg_num_soup))
         result['registered_number'] = reg_num_soup.text.strip()
-        registered_id = reg_num_soup.get('href')
+        registered_id = int(reg_num_soup.get('href'))
         match = re.search(r"id=(\d+)", registered_id)
         result['registered_id'] = match.group(1) if match else None      
 
@@ -1433,7 +1659,7 @@ def get_sogl_info(path):
     element = doccard_table.find_all('td', attrs={"data-tour":"14"}) # Подпись
     for item in element:
         try:
-            result["signed_by_id"] = item.find('span').get('axuiuserid')
+            result["signed_by_id"] = int(item.find('span').get('axuiuserid'))
             result["signed_by_fio"] = item.find('span').strong.text.strip()
             company = item.find('span').text.strip()
             match = re.findall(r'\((.*?)\)', company)
@@ -1451,7 +1677,7 @@ def get_sogl_info(path):
 
     for item in element:
         try:
-            result["executor_id"] = item.find('span').get('axuiuserid')
+            result["executor_id"] = int(item.find('span').get('axuiuserid'))
             result["executor_fio"] = item.find('span').b.text.strip()
             company = item.find('span').text.strip()
             match = re.findall(r'\((.*?)\)', company)
@@ -1476,7 +1702,7 @@ def get_sogl_info(path):
                     # print(answer)
                     answer_id = answer.get('href')
                     match = re.search(r"id=(\d+)", answer_id)
-                    answer_id = match.group(1) if match else None
+                    answer_id = int(match.group(1)) if match else None
                     answer_text = answer.text.strip()
                     if prev_answer_id != answer_id:
                         answer_result.append({"answer_id": answer_id, "answer_text": answer_text})
@@ -1499,7 +1725,7 @@ def get_sogl_info(path):
                         rec_company = match[1]
                     except:
                         rec_company = 'Not Found'
-            recipients.append({"sedo_id": rec_id, "fio": rec_fio, "company": rec_company})
+            recipients.append({"sedo_id": int(rec_id), "fio": rec_fio, "company": rec_company})
 
     try:
         result["description"] = doccard_table.find('td',
@@ -1514,6 +1740,9 @@ def get_sogl_info(path):
         print(e)
 
     result['structure'] = parse_sogl_structure(document)
+
+    sedodata = SedoData()
+    result = sedodata.insert_sogly_into_db(result)
     # pprint(result)
     return result
 ####################
@@ -1620,10 +1849,10 @@ def parse_sogl_structure(document):
                 # print(chain)
                 row = {  # 🔥 создаём новый dict КАЖДЫЙ РАЗ
                     'dl': dl,
-                    'type': chain[dl],
+                    'type': chain.get(dl, None),
                     'number': number,
                     'fio': fio,
-                    'sedo_id': sedo_id,
+                    'sedo_id': int(sedo_id),
                     'status': status,
                     'date': date
                 }
@@ -1652,15 +1881,15 @@ def parse_sogl_structure(document):
                 sedo_id = tds[1].span.get('axuiuserid')
                 row = {  # 🔥 создаём новый dict КАЖДЫЙ РАЗ
                     'dl': dl,
-                    'type': chain[dl],
+                    'type': chain.get(dl, None),
                     'number': number,
                     'fio': fio,
-                    'sedo_id': sedo_id,
+                    'sedo_id': int(sedo_id),
                     'status': status,
                     'date': date
                 }
                 nodes.append(row)
-                print(f'dl = {dl}, type = {chain[dl]}, number = {number}, fio = {fio}, status = {status.split()[0]}')
+                # print(f'dl = {dl}, type = {chain[dl]}, number = {number}, fio = {fio}, status = {status.split()[0]}')
                 # if (chain[dl] == "Последовательное") and ("Согласовано" in status):
                 #     dl = dl - 1
     # # pprint(nodes)
@@ -1679,27 +1908,31 @@ def parse_sogl_structure(document):
     return build_sogl_tree(merge_redirect_status_to_previous(nodes))
 
 if __name__ == "__main__":
-    result = get_sogl_info('../test_docs/sogl_5.html')
-    with open("result.json", "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+    # with open ('../test_docs/sogl_5.html', 'r') as doccard:
+    #     document = BeautifulSoup(doccard, 'html.parser')
+    # result = get_sogl_info(document, 514605693)
+    
+    # pprint(result)
+    # with open("result.json", "w", encoding="utf-8") as f:
+    #     json.dump(result, f, ensure_ascii=False, indent=2)
     # start = datetime.now()
     # print(start)
     # date_from = datetime(2025, 2, 23, 0, 0, 0)
     # date_to = datetime(2025, 6, 23, 0, 0, 0)
-    # fio = 'Габитов Д.Ш.'
-    # sedo_id = 78264321
-    # session, DNSID = get_session()
-    # doc_ids = get_doc_ids(date_from, date_to, fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
-    # pprint(doc_ids)
+    fio = 'Мусиенко О.А.'
+    sedo_id = 70045
+    session, DNSID = get_session()
+    doc_ids = get_sogl_ids(fio=fio, sedo_id=sedo_id, session=session, DNSID=DNSID)
+    pprint(doc_ids)
     
-    # with ProcessPoolExecutor(max_workers=50) as executor:
-    #     futures = [executor.submit(process_doc, session, doc_id, DNSID) for doc_id in doc_ids]
+    with ProcessPoolExecutor(max_workers=50) as executor:
+        futures = [executor.submit(process_sogl, session, doc_id, DNSID) for doc_id in doc_ids]
 
-    #     for future in futures:
-    #         print(future.result())
+        for future in futures:
+            print(future.result())
 
-    # print(len(doc_ids))
-    # print(datetime.now() - start)
+    print(len(doc_ids))
+    print(datetime.now() - start)
 
     # with open ('./test_docs/debug1.html', 'r') as doccard:
     #     document = BeautifulSoup(doccard, 'html.parser')

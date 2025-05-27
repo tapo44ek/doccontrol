@@ -1,7 +1,7 @@
 import asyncpg
 import psycopg2
 from psycopg2.extras import execute_values
-from core.config import ProjectManagementSettings
+from config import ProjectManagementSettings
 from db import get_connection
 from datetime import datetime
 from pathlib import Path
@@ -319,7 +319,7 @@ class SedoData:
             data["sedo_id"],
             data["dgi_number"],
             datetime.strptime(data["date"], "%d.%m.%Y"),
-            data.get("registered_id"),
+            data.get("registered_sedo_id"),
             data.get("registered_number"),
             data.get("description"),
             data.get("signed_by_sedo_id"),

@@ -159,4 +159,35 @@ class DocRepository:
             connection.close()
         return result
 
+    def get_sogl_to_update(self, params :dict) -> None | dict:
+
+        sql = f'''
+            SELECT DISTINCT sedo_id
+            FROM public.sogly
+            where registered_sedo_id is NULL;
+        '''
+        connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(sql)
+
+            rows = cursor.fetchall()
+            if rows:
+                return [row[0] for row in rows]
+            else: return []
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
+
 
