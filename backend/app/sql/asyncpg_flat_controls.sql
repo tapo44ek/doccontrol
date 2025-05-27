@@ -230,6 +230,7 @@ SELECT
     s.sedo_id as s_sedo_id,
     s.registered_sedo_id as s_registered_sedo_id,
     s.registered_number as s_registered_number,
+    s.started_at as s_started_at,
     s.structure as s_structure,
     d.updated_at
 FROM public.documents d
@@ -260,5 +261,10 @@ LEFT JOIN public.sogly s
        s.answer,
        '$[*] ? (@.answer_id == $id)',
        jsonb_build_object('id', to_jsonb(d.sedo_id))
+     )
+ AND jsonb_path_exists(
+       s.structure,
+       '$.** ? (@.sedo_id == $target)',
+       jsonb_build_object('target', to_jsonb($11))
      )
 ORDER BY d.sedo_id ASC;

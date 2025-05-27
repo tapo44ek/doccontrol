@@ -19,6 +19,15 @@ async def get_controls(request: Request):
     result = await dataservice.run_update_data_and_wait({"user_id": uuid})
     return result
 
+@router.patch("/all_sogl")
+async def get_controls(request: Request):
+    uuid = request.cookies.get("uuid")
+    if not uuid:
+        raise HTTPException(status_code=401, detail="uuid не найден")
+    dataservice = DataService()
+    result = await dataservice.run_update_sogl_and_wait({"user_id": uuid})
+    return result
+
 @router.get("/check_status")
 async def get_env_status(request: Request):
     uuid = request.cookies.get("uuid")

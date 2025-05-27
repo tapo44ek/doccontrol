@@ -1945,6 +1945,22 @@ class DataService:
             raise HTTPException(status_code=500, detail=str(traceback.print_exc()))
         return {"status": "success", "result": result}
 
+    async def run_update_sogl_and_wait(self, params :dict) -> dict:
+        try:
+            result = await self.sedo_data.set_env_update_on(params['user_id'])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
+        try:
+            result = await asyncio.to_thread(self.update_sogl_data, params)
+            result = await self.sedo_data.set_env_update_off(params['user_id'])
+        except Exception as e:
+            try:
+                result = await self.sedo_data.set_env_update_off(params['user_id'])
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
+            raise HTTPException(status_code=500, detail=str(traceback.print_exc()))
+        return {"status": "success", "result": result}
+
     async def run_update_list_docs(self, params :dict) -> dict:
         try:
             user_repository = UserRepository()
@@ -1956,7 +1972,7 @@ class DataService:
             params['boss3_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss3_sedo']) if params['boss3_sedo'] is not None else None)
             print(params)
             result = await asyncio.to_thread(self.update_docs_by_list, params['doclist'])
-            result = await asyncio.to_thread(self.update_sogl_by_list, params['doclist'])
+            # result = await asyncio.to_thread(self.update_sogl_by_list, params['doclist'])
             new_data = await self.doc_repository.get_docs_by_id(params)
             return new_data
         except Exception as e:

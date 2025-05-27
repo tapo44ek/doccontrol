@@ -388,6 +388,8 @@ const filteredData = useMemo(() => {
           ),
         size: 100,
       },
+
+      
       {
         accessorKey: 'date',
         enableSorting: true,
@@ -487,44 +489,121 @@ const filteredData = useMemo(() => {
         size: 200,
       });
     }
-  
+
     base.push(
       {
-        accessorKey: 'person',
-        enableSorting: false,
-        header: 'Исполнитель',
-        cell: ({ row }) => (
-          <td className="px-4 py-3 border-b border-gray-200 text-xs">{row.getValue('person')}</td>
-        ),
-        size: 150,
-      },
-{
-  accessorKey: 'due_date',
+        accessorKey: 's_dgi_number',
+        enableSorting: true,
+        header: 'согл',
+        cell: ({ row }) =>
+          row.original._isFirst && (
+<td rowSpan={row.original._groupSize} className="px-4 py-3 w-[200px] border-b border-gray-200 text-xs">
+  <a
+    href={`https://mosedo.mos.ru/document.card.php?id=${row.original.s_sedo_id}`}
+    className="text-blue-600 underline block"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {row.getValue('s_dgi_number')}
+  </a>
+  <div className="flex items-center gap-1 mt-1">
+{/* <button
+  onClick={() => handleUpdate(row.original.s_sedo_id)}
+  className={`${
+    !handleBulkUpdate
+      ? 'text-gray-400 cursor-not-allowed'
+      : 'text-blue-600 hover:text-blue-800'
+  }`}
+  title="Обновить"
+  disabled={!handleBulkUpdate}
+>
+  <RotateCcw className="w-3 h-3" />
+</button> */}
+{row.original.s_dgi_number != null && (
+    <span className="text-xs text-gray-500 text-[9px]">
+      запущен: {row.original.s_started_at
+  ? format(parseISO(row.original.s_started_at), 'dd.MM.yyyy HH:mm')
+  : '—'}
+    </span>
+)}
+  </div>
+</td>
+          ),
+        size: 100,
+      }
+    )
+  
+//     base.push(
+//       {
+//         accessorKey: 'person',
+//         enableSorting: false,
+//         header: 'Исполнитель',
+//         cell: ({ row }) => (
+//           <td className="px-4 py-3 border-b border-gray-200 text-xs">{row.getValue('person')}</td>
+//         ),
+//         size: 150,
+//       },
+// {
+//   accessorKey: 'due_date',
+//   enableSorting: false,
+//   header: 'Срок',
+//   cell: ({ row }) => {
+//     const closed = row.getValue('closed_date');
+//     const due = row.getValue('due_date');
+//     return (
+//       <td className="px-4 py-3 border-b border-gray-200 text-xs">
+//         {!closed ? <DateBadge date={due} /> :  <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>
+//       {due}
+//     </span> || '-'}
+//       </td>
+//     );
+//   },
+//   size: 100,
+// },
+//       {
+//         accessorKey: 'closed_date',
+//         enableSorting: false,
+//         header: 'Дата закрытия',
+//         cell: ({ row }) => (
+//           <td className="px-4 py-3 border-b border-gray-200 text-xs"><span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>{row.getValue('closed_date')}</span></td>
+//         ),
+//         size: 100,
+//       }
+//     );
+
+base.push({
+  id: 'person_info',
+  header: 'Исполнитель / Срок / Закрытие',
   enableSorting: false,
-  header: 'Срок',
   cell: ({ row }) => {
-    const closed = row.getValue('closed_date');
-    const due = row.getValue('due_date');
+    const person = row.original.person;
+    const due = row.original.due_date;
+    const closed = row.original.closed_date;
+
     return (
-      <td className="px-4 py-3 border-b border-gray-200 text-xs">
-        {!closed ? <DateBadge date={due} /> :  <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>
-      {due}
-    </span> || '-'}
+      <td className="px-4 py-3 border-b border-gray-200 text-xs space-y-1">
+        <div>{person}</div>
+        <div>
+          {!closed ? (
+            <DateBadge date={due} />
+          ) : (
+            <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+              {due || '-'}
+            </span>
+          )}
+        </div>
+        <div>
+          {closed && (
+            <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+              {closed || '-'}
+            </span>
+          )}
+        </div>
       </td>
     );
   },
-  size: 100,
-},
-      {
-        accessorKey: 'closed_date',
-        enableSorting: false,
-        header: 'Дата закрытия',
-        cell: ({ row }) => (
-          <td className="px-4 py-3 border-b border-gray-200 text-xs"><span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800`}>{row.getValue('closed_date')}</span></td>
-        ),
-        size: 100,
-      }
-    );
+  size: 220,
+});
   
     return base;
   }, [bossNames]);

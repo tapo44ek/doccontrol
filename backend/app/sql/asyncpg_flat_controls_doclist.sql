@@ -225,6 +225,13 @@ SELECT
     (best.boss2_due_date)::date,
     (best.boss3_due_date)::date,
     best.children_controls,
+    s.dgi_number as s_dgi_number,
+    s.date as s_date,
+    s.sedo_id as s_sedo_id,
+    s.registered_sedo_id as s_registered_sedo_id,
+    s.registered_number as s_registered_number,
+    s.started_at as s_started_at,
+    s.structure as s_structure,
     d.updated_at
 FROM public.documents d
 JOIN (
@@ -249,4 +256,15 @@ JOIN (
     ) ranked
     WHERE rn = 1
 ) best ON d.sedo_id = best.doc_id
+LEFT JOIN public.sogly s
+  ON jsonb_path_exists(
+       s.answer,
+       '$[*] ? (@.answer_id == $id)',
+       jsonb_build_object('id', to_jsonb(d.sedo_id))
+     )
+ AND jsonb_path_exists(
+       s.structure,
+       '$.** ? (@.sedo_id == $target)',
+       jsonb_build_object('target', to_jsonb($11))
+     )
 ORDER BY d.sedo_id ASC;
