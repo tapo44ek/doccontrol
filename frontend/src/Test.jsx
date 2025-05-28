@@ -524,13 +524,39 @@ cell: ({ row }) =>
 >
   <RotateCcw className="w-3 h-3" />
 </button> */}
-{row.original.s_dgi_number != null && (
+{row.original.s_dgi_number != null && !row.original.s_registered_sedo_id &&(
     <span className="text-xs text-gray-500 text-[9px]">
       запущен: {row.original.s_started_at
   ? format(parseISO(row.original.s_started_at), 'dd.MM.yyyy HH:mm')
   : '—'}
     </span>
 )}
+</div>
+<div className="flex items-center gap-1 mt-1">
+
+        {/* бейдж: зарегистрирован */}
+        {row.original.s_registered_sedo_id && (
+          <div>
+          {/* <div className="inline-flex items-center gap-2">
+            <span className="px-2 py-0.5 text-green-700 bg-green-100 rounded-full text-[10px] font-semibold">
+              Зарегистрирован
+            </span>
+          </div> */}
+          <div className="inline-flex items-center gap-2">
+            <span className="px-2 py-0.5 text-green-700 bg-green-100 rounded-full text-[8px] font-semibold">
+                <a
+    href={`https://mosedo.mos.ru/document.card.php?id=${row.original.s_registered_sedo_id}`}
+    className="text-blue-600 underline block"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    рег: {row.original.s_registered_number}
+  </a>
+              {/* {row.original.s_registered_number} */}
+            </span>
+          </div>
+          </div>
+        )}
   </div>
 </td>
           ),
