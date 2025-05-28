@@ -435,12 +435,17 @@ const filteredData = useMemo(() => {
         accessorKey: 'executor_due_date',
         enableSorting: true,
         header: 'Срок исполнения',
-        cell: ({ row }) =>
-          row.original._isFirst && (
-            <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs">
-              <DateBadge date={row.getValue('executor_due_date')} />
-            </td>
-          ),
+cell: ({ row }) =>
+  row.original._isFirst && (
+    <td rowSpan={row.original._groupSize} className="px-4 py-3 border-b border-gray-200 text-xs space-y-1">
+      <DateBadge date={row.getValue('executor_due_date')} />
+      {row.original.is_additional && (
+        <div className="inline-block px-2 py-0.5 text-blue-600 bg-blue-100 rounded-full text-[10px] font-semibold">
+          в плюсе
+        </div>
+      )}
+    </td>
+  ),
         size: 100,
       }
     ];

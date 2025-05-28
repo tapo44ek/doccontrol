@@ -150,6 +150,7 @@ recursive_children AS (
         fr.parent_id,
         fr.type,
         fr.controls,
+        fr.recipients,
         fr.author_id,
         i.leaf_id AS origin_leaf_id
     FROM initial_leafs i
@@ -162,6 +163,7 @@ recursive_children AS (
         fr.parent_id,
         fr.type,
         fr.controls,
+        fr.recipients,
         fr.author_id,
         rc.origin_leaf_id
     FROM flat_resolution fr
@@ -169,29 +171,54 @@ recursive_children AS (
 ),
 
 child_controls AS (
+
+    -- 1. Контроли от нужного автора в "Резолюции" или "Направлении"
     SELECT
         rc.origin_leaf_id AS leaf_id,
-jsonb_agg(
-    jsonb_build_object(
-        'person', c ->> 'person',
-        'due_date', c ->> 'due_date',
-        'closed_date', c ->> 'closed_date',
-        'is_control', c ->> 'is_control',
-        'modified_date', c ->> 'modified_date'
-    )
-) FILTER (
-    WHERE 
-        c ->> 'person' IS NOT NULL OR
-        c ->> 'due_date' IS NOT NULL OR
-        c ->> 'closed_date' IS NOT NULL OR
-        c ->> 'is_control' IS NOT NULL OR
-        c ->> 'modified_date' IS NOT NULL
-)
-         AS children_controls
+        jsonb_agg(
+            jsonb_build_object(
+                'person', c ->> 'person',
+                'due_date', c ->> 'due_date',
+                'closed_date', c ->> 'closed_date',
+                'is_control', c ->> 'is_control',
+                'modified_date', c ->> 'modified_date'
+            )
+        ) FILTER (
+            WHERE 
+                c ->> 'person' IS NOT NULL OR
+                c ->> 'due_date' IS NOT NULL OR
+                c ->> 'closed_date' IS NOT NULL OR
+                c ->> 'is_control' IS NOT NULL OR
+                c ->> 'modified_date' IS NOT NULL
+        ) AS children_controls
     FROM recursive_children rc,
          jsonb_array_elements(rc.controls) AS c
-    WHERE rc.type = 'Резолюция'
+    WHERE rc.type IN ('Резолюция', 'Направление')
       AND rc.author_id = $11
+    GROUP BY rc.origin_leaf_id
+
+    UNION ALL
+
+    -- 2. Если контролей нет — recipients с тем же sedo_id от "Резолюции" или "Направления"
+    SELECT
+        rc.origin_leaf_id AS leaf_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'person', r ->> 'fio',
+                'due_date', NULL,
+                'closed_date', NULL,
+                'is_control', NULL,
+                'modified_date', NULL
+            )
+        ) AS children_controls
+    FROM recursive_children rc,
+    jsonb_array_elements(rc.recipients) AS r
+    WHERE rc.author_id = $11
+      AND rc.type IN ('Резолюция', 'Направление документа. ')
+--      AND rc.author_id = $11
+      AND (
+        NOT jsonb_path_exists(rc.controls, '$[*] ? (@.person != null)')
+      )
     GROUP BY rc.origin_leaf_id
 ),
 
