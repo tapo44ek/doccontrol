@@ -203,7 +203,13 @@ crazy AS (
         bd.due_date AS boss_due_date,
         b2d.due_date AS boss2_due_date,
         b3d.due_date AS boss3_due_date,
-        cc.children_controls 
+        cc.children_controls,
+        EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(i.recipients) AS r
+            WHERE r ->> 'sedo_id' = $11::text
+            AND r ->> 'text' LIKE '+%'
+        ) AS is_additional
     FROM initial_leafs i
     LEFT JOIN child_controls cc ON cc.leaf_id = i.leaf_id
     LEFT JOIN executor_due ed ON ed.leaf_id = i.leaf_id
@@ -220,6 +226,7 @@ SELECT
     d.signed_by_fio AS author,
     d.signed_by_company AS author_company,
     best.res_id,
+    best.is_additional,
     (best.executor_due_date)::date,
     (best.boss_due_date)::date,
     (best.boss2_due_date)::date,
