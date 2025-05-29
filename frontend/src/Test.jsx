@@ -4,6 +4,7 @@ import {
   getCoreRowModel,
   getSortedRowModel
 } from '@tanstack/react-table';
+import { LetterStatusHeader } from './LetterStatusHeader';
 import { useState, useMemo, useEffect } from 'react';
 import { parseISO, format, isValid, parse } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -24,6 +25,15 @@ const parseChildren = (controls) => {
   }
 };
 
+
+const statusDefs = {
+  unassigned: (row) => !row.children_controls,
+  prepared: (row) => !!row.s_dgi_number && !row.s_started_at,
+  in_approval: (row) => !!row.s_started_at && !row.s_structure.some(s => s.status === 'На подписании') && !row.s_structure.some(s => s.status === 'Подписан') && !row.s_registered_sedo_id,
+  on_signing: (row) => Array.isArray(row.s_structure) && row.s_structure.some(s => s.status === 'На подписании'),
+  on_registration: (row) => Array.isArray(row.s_structure) && row.s_structure.some(s => s.status === 'Подписан'),
+  registered: (row) => !!row.s_registered_sedo_id,
+};
 
 
 const processData = (data) => {
@@ -142,8 +152,8 @@ const DateBadge = ({ date }) => {
 export default function ParentChildTable({ data }) {
   const [sorting, setSorting] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
-  const [noDueData, setNoDueData] = useState([]);
-  const [showNoDue, setShowNoDue] = useState(false);
+  // const [noDueData, setNoDueData] = useState([]);
+  // const [showNoDue, setShowNoDue] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [bossNames, setBossNames] = useState({ boss1: null, boss2: null, boss3: null });
   const [selected, setSelected] = useState(new Set());
@@ -151,6 +161,28 @@ export default function ParentChildTable({ data }) {
   const [dueFilter, setDueFilter] = useState(new Set());
   const clearDueFilter = () => setDueFilter(new Set());
   const [showFilters, setShowFilters] = useState(true);
+
+const [statusFilter, setStatusFilter] = useState(null);
+const [noDueData, setNoDueData] = useState([]);
+const [showNoDue, setShowNoDue] = useState(false);
+// const [tableData, setTableData] = useState([]);
+
+const tableData = useMemo(() => {
+  let combined = [...data];
+
+  if (showNoDue && noDueData.length > 0) {
+    const ids = new Set(combined.map(el => el.res_id));
+    const additional = noDueData.filter(el => !ids.has(el.res_id));
+    combined = [...combined, ...additional];
+  }
+
+  if (statusFilter) {
+    combined = combined.filter(statusDefs[statusFilter]);
+  }
+
+  return combined;
+}, [data, noDueData, showNoDue, statusFilter]);
+
 
   const handleClearAllFilters = () => {
   clearDueFilter();           // очищает dueFilter
@@ -215,24 +247,24 @@ export default function ParentChildTable({ data }) {
     }
   };
 
-const [tableData, setTableData] = useState([...data]);
+// const [tableData, setTableData] = useState([...data]);
 
-useEffect(() => {
-  setTableData([...data]);
-}, [data]);
+// useEffect(() => {
+//   setTableData([...data]);
+// }, [data]);
 
-useEffect(() => {
-  if (showNoDue && noDueData.length > 0) {
-    setTableData(prev => {
-      const existing = new Set(prev.map(el => el.res_id));
-      const toAdd = noDueData.filter(el => !existing.has(el.res_id));
-      return [...prev, ...toAdd];
-    });
-  } else {
-    // фильтруем те, у кого нет executor_due_date (то есть "без срока")
-    setTableData(prev => prev.filter(el => el.executor_due_date));
-  }
-}, [showNoDue, noDueData]);
+// useEffect(() => {
+//   if (showNoDue && noDueData.length > 0) {
+//     setTableData(prev => {
+//       const existing = new Set(prev.map(el => el.res_id));
+//       const toAdd = noDueData.filter(el => !existing.has(el.res_id));
+//       return [...prev, ...toAdd];
+//     });
+//   } else {
+//     // фильтруем те, у кого нет executor_due_date (то есть "без срока")
+//     setTableData(prev => prev.filter(el => el.executor_due_date));
+//   }
+// }, [showNoDue, noDueData]);
 
 
 // 3. Универсальный handler обновления
@@ -299,7 +331,7 @@ const fullData = useMemo(() => {
   return base;
 }, [tableData, noDueData, showNoDue]);
 
-const flatData = useMemo(() => processData(fullData), [fullData]);
+const flatData = useMemo(() => processData(tableData), [tableData]);
 
 const filteredData = useMemo(() => {
   let result = [...flatData];
@@ -650,7 +682,12 @@ base.push({
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
-<div className="mb-4">
+      <div className="mb-4">
+<LetterStatusHeader
+  data={tableData} // <-- теперь совпадает с тем, что видит пользователь
+  activeStatus={statusFilter}
+  onFilterChange={setStatusFilter}
+/>
   <div className="flex justify-between items-center">
     <button
       onClick={() => setShowFilters(prev => !prev)}
@@ -771,7 +808,7 @@ base.push({
   )}
 </div>
       <div className="text-sm text-gray-600">
-        Всего: <span className="font-semibold">{filteredData.length}</span>
+        Всего: <span className="font-semibold">{tableData.length}</span>
       </div>
 
       <div className="overflow-auto rounded-lg border border-gray-300 shadow-sm h-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
