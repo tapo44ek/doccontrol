@@ -177,11 +177,21 @@ const tableData = useMemo(() => {
   }
 
   if (statusFilter) {
-    combined = combined.filter(statusDefs[statusFilter]);
+    combined = combined.filter(statusDefs[statusFilter]?.condition);
   }
 
   return combined;
 }, [data, noDueData, showNoDue, statusFilter]);
+
+const rawDataWithNoDue = useMemo(() => {
+  let combined = [...data];
+  if (showNoDue && noDueData.length > 0) {
+    const ids = new Set(combined.map(el => el.res_id));
+    const additional = noDueData.filter(el => !ids.has(el.res_id));
+    combined = [...combined, ...additional];
+  }
+  return combined;
+}, [data, noDueData, showNoDue]);
 
 
   const handleClearAllFilters = () => {
@@ -332,6 +342,8 @@ const fullData = useMemo(() => {
 }, [tableData, noDueData, showNoDue]);
 
 const flatData = useMemo(() => processData(tableData), [tableData]);
+
+const flatUnfilteredData = useMemo(() => processData(rawDataWithNoDue), [rawDataWithNoDue]);
 
 const filteredData = useMemo(() => {
   let result = [...flatData];
@@ -684,7 +696,7 @@ base.push({
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
       <div className="mb-4">
 <LetterStatusHeader
-  data={tableData} // <-- теперь совпадает с тем, что видит пользователь
+  allData={flatUnfilteredData}
   activeStatus={statusFilter}
   onFilterChange={setStatusFilter}
 />
