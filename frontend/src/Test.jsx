@@ -25,13 +25,26 @@ const parseChildren = (controls) => {
   }
 };
 
+const toArray = (maybeArray) => Array.isArray(maybeArray) ? maybeArray : [];
 
 const statusDefs = {
   unassigned: (row) => !row.children_controls,
   prepared: (row) => !!row.s_dgi_number && !row.s_started_at,
-  in_approval: (row) => !!row.s_started_at && !row.s_structure.some(s => s.status === 'На подписании') && !row.s_structure.some(s => s.status === 'Подписан') && !row.s_registered_sedo_id,
-  on_signing: (row) => Array.isArray(row.s_structure) && row.s_structure.some(s => s.status === 'На подписании'),
-  on_registration: (row) => Array.isArray(row.s_structure) && row.s_structure.some(s => s.status === 'Подписан'),
+  in_approval: (row) => {
+    const struct = toArray(row?.s_structure);
+    return (
+        !!row.s_started_at &&
+        !struct.some(s => s.status === 'На подписании') &&
+        !struct.some(s => s.status === 'Подписан') &&
+        !row.s_registered_sedo_id
+    );
+    },
+  on_signing: (row) => {
+      const struct = toArray(row?.s_structure);
+      return struct.some(s => s.status === 'На подписании');
+    },
+  on_registration: (row) => {const struct = toArray(row?.s_structure);
+      return struct.some(s => s.status === 'Подписан');},
   registered: (row) => !!row.s_registered_sedo_id,
 };
 
@@ -177,7 +190,7 @@ const tableData = useMemo(() => {
   }
 
   if (statusFilter) {
-    combined = combined.filter(statusDefs[statusFilter]?.condition);
+    combined = combined.filter(statusDefs[statusFilter]);
   }
 
   return combined;
@@ -331,19 +344,19 @@ const toggleDueFilter = (key) => {
   });
 };
 
-const fullData = useMemo(() => {
-  const base = [...tableData];
-  if (showNoDue && noDueData.length > 0) {
-    const baseIds = new Set(base.map(el => el.res_id));
-    const toAdd = noDueData.filter(el => !baseIds.has(el.res_id));
-    return [...base, ...toAdd];
-  }
-  return base;
-}, [tableData, noDueData, showNoDue]);
+// const fullData = useMemo(() => {
+//   const base = [...tableData];
+//   if (showNoDue && noDueData.length > 0) {
+//     const baseIds = new Set(base.map(el => el.res_id));
+//     const toAdd = noDueData.filter(el => !baseIds.has(el.res_id));
+//     return [...base, ...toAdd];
+//   }
+//   return base;
+// }, [tableData, noDueData, showNoDue]);
 
 const flatData = useMemo(() => processData(tableData), [tableData]);
 
-const flatUnfilteredData = useMemo(() => processData(rawDataWithNoDue), [rawDataWithNoDue]);
+// const flatUnfilteredData = useMemo(() => processData(rawDataWithNoDue), [rawDataWithNoDue]);
 
 const filteredData = useMemo(() => {
   let result = [...flatData];
@@ -695,11 +708,13 @@ base.push({
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
       <div className="mb-4">
+        <div className="flex justify-center items-center">
 <LetterStatusHeader
-  allData={flatUnfilteredData}
+  allData={rawDataWithNoDue}
   activeStatus={statusFilter}
   onFilterChange={setStatusFilter}
 />
+</div>
   <div className="flex justify-between items-center">
     <button
       onClick={() => setShowFilters(prev => !prev)}
