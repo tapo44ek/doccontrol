@@ -3,6 +3,7 @@ import RefreshButton from './RefreshButton';
 import TableContainer from './TableContainer';
 import RefreshSoglButton from './RefreshSoglButton';
 const authUrl = import.meta.env.VITE_AUTH_URL;
+const authBackendUrl = import.meta.env.VITE_AUTH_BACKEND_URL;
 
 
 
@@ -10,6 +11,38 @@ function Page() {
   const tableRef = useRef();
   const [minUpdatedAt, setMinUpdatedAt] = useState(null);
   const [now, setNow] = useState(new Date());
+
+  const [user, setUser] = useState({
+  "user_uuid": null,
+  "first_name": null,
+  "middle_name": null,
+  "last_name": null,});
+
+  const fetchData  = async (_uuid) => {
+    try {
+      // const payload = { user_id: id };
+
+      const response = await fetch(`${authBackendUrl}/v1/user/get_user/${_uuid}`, {
+        method: 'GET',
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+
+      const responseData = await response.json();
+      if (responseData) {
+        setUser(responseData);
+      }
+      else {
+        console.error(`Ошибка при запросе по uuid, ответ :${responseData}`)
+      }
+      setUser(responseData);
+
+    } catch (err) {
+      console.error('Ошибка при запросе:', err);
+      setError(err.message);
+    }
+  };
 
     useEffect(() => {
     const interval = setInterval(() => {
@@ -21,12 +54,19 @@ function Page() {
 
   useEffect(() => {
   const cookies = document.cookie.split(';').map(c => c.trim());
-  const hasUuid = cookies.some(cookie => cookie.startsWith('uuid='));
+  const uuidCookie = cookies.find(cookie => cookie.startsWith('uuid='));
+  const uuid = uuidCookie ? uuidCookie.split('=')[1] : null;
 
-  if (!hasUuid) {
+  if (!uuidCookie) {
     window.location.href = authUrl; // 🔁 укажи нужную ссылку
   }
-}, []);
+  else {
+    fetchData(uuid);
+
+    console.log(uuid);
+  }
+  }, []);
+
 
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const isBlocked = minUpdatedAt && minUpdatedAt > oneHourAgo;
@@ -54,8 +94,11 @@ return (
         />
         </div>
       </div>
-      <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-medium text-gray-900 dark:text-gray-100">
+      {/* <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-medium text-gray-900 dark:text-gray-100">
         Контроль Писем
+      </div> */}
+      <div className="absolute left-1/2 transform -translate-x-2/3 text-2xl font-medium text-gray-900 dark:text-gray-100">
+        Письма {user.first_name} {user.last_name}
       </div>
       <div>
         <button
