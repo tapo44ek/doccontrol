@@ -243,6 +243,15 @@ crazy AS (
     LEFT JOIN boss_due bd ON bd.leaf_id = i.leaf_id
     LEFT JOIN boss2_due b2d ON b2d.leaf_id = i.leaf_id
     LEFT JOIN boss3_due b3d ON b3d.leaf_id = i.leaf_id
+),
+
+filtered_sogly AS (
+  SELECT *
+  FROM public.sogly
+  WHERE NOT jsonb_path_exists(
+    structure,
+    '$.** ? (@.status == "Не согласовано")'
+  )
 )
 
 SELECT 
@@ -290,7 +299,7 @@ JOIN (
     ) ranked
     WHERE rn = 1
 ) best ON d.sedo_id = best.doc_id
-LEFT JOIN public.sogly s
+LEFT JOIN filtered_sogly s
   ON jsonb_path_exists(
        s.answer,
        '$[*] ? (@.answer_id == $id)',

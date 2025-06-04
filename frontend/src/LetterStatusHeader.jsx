@@ -55,35 +55,42 @@ if (!row) return false;
 
 export const LetterStatusHeader = ({ allData, onFilterChange, activeStatus }) => {
   const counts = Object.fromEntries(
-    Object.entries(statusDefs).map(([ key, def ]) => [key, allData.filter(def.condition).length])
+    Object.entries(statusDefs).map(([key, def]) => [
+      key,
+      allData.filter(def.condition).length,
+    ])
   );
 
   return (
     <div className="flex gap-3 flex-wrap bg-gray-100 p-2 rounded-xl items-center text-sm">
+      <button
+        onClick={() => onFilterChange([])}
+        className={`px-3 py-1 rounded-md border ${
+          activeStatus.length === 0
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-800"
+        }`}
+      >
+        Все ({allData.length})
+      </button>
+      {Object.entries(statusDefs).map(([key, def]) => (
         <button
-            onClick={() => onFilterChange(null)}
-            className={`px-3 py-1 rounded-md border ${
-            activeStatus === null
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-800"
-            }`}
+          key={key}
+          onClick={() => {
+            const newSet = activeStatus.includes(key)
+              ? activeStatus.filter((k) => k !== key)
+              : [...activeStatus, key];
+            onFilterChange(newSet);
+          }}
+          className={`px-3 py-1 rounded-md border ${
+            activeStatus.includes(key)
+              ? "bg-blue-600 text-white"
+              : "bg-white text-gray-800"
+          }`}
         >
-            Все ({allData.length})
+          {def.label} ({counts[key]})
         </button>
-        {Object.entries(statusDefs).map(([ key, def ]) => (   
-            <button
-            key={key}
-            onClick={() => onFilterChange(key)}
-            className={`px-3 py-1 rounded-md border ${
-                activeStatus === key
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-800"
-            }`}
-            >
-            {def.label} ({counts[key]})
-            </button>
-        ))}
-
+      ))}
     </div>
   );
 };

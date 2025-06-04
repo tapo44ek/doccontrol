@@ -178,7 +178,7 @@ export default function ParentChildTable({ data }) {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [dueFilter, setDueFilter] = useState(new Set());
   const [showFilters, setShowFilters] = useState(true);
-  const [statusFilter, setStatusFilter] = useState(null);
+  const [statusFilter, setStatusFilter] = useState([]);
   const [noDueData, setNoDueData] = useState([]);
   const [showNoDue, setShowNoDue] = useState(false);
 // const [tableData, setTableData] = useState([]);
@@ -192,8 +192,10 @@ const tableData = useMemo(() => {
     combined = [...combined, ...additional];
   }
 
-  if (statusFilter) {
-    combined = combined.filter(statusDefs[statusFilter]);
+  if (statusFilter.length > 0) {
+    combined = combined.filter(row =>
+      statusFilter.some(key => statusDefs[key](row))
+    );
   }
 
   return combined;
@@ -389,8 +391,10 @@ const filteredData = useMemo(() => {
       date.setHours(0, 0, 0, 0);
 
       return (
+        (dueFilter.has('ago') && date.getTime() < today.getTime()) ||
         (dueFilter.has('today') && date.getTime() === today.getTime()) ||
-        (dueFilter.has('tomorrow') && date.getTime() === tomorrow.getTime())
+        (dueFilter.has('tomorrow') && date.getTime() === tomorrow.getTime()) ||
+        (dueFilter.has('other') && date.getTime() > tomorrow.getTime())
       );
     });
   }
@@ -724,6 +728,39 @@ base.push({
     ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
     : 0;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const dueCounts = {
+    ago: 0,
+    today: 0,
+    tomorrow: 0,
+    other: 0,
+    };
+
+    const seenSedoIds = new Set();
+
+    for (const row of filteredData) {
+    const sedoId = row.sedo_id;
+    if (sedoId == null || seenSedoIds.has(sedoId)) continue;
+
+    seenSedoIds.add(sedoId);
+
+    const rawDue = row.executor_due_date;
+    if (!rawDue) continue;
+
+    const date = new Date(rawDue);
+    date.setHours(0, 0, 0, 0);
+
+    if (date < today) dueCounts.ago++;
+    else if (date.getTime() === today.getTime()) dueCounts.today++;
+    else if (date.getTime() === tomorrow.getTime()) dueCounts.tomorrow++;
+    else if (date > tomorrow) dueCounts.other++;
+    }
+
   return (
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
 
@@ -790,26 +827,28 @@ base.push({
         <div className="flex flex-col items-center">
           <span className="text-sm text-gray-500 mb-1 text-center">Сроки</span>
           <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'today', label: 'Сегодня' },
-              { key: 'tomorrow', label: 'Завтра' },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => toggleDueFilter(key)}
-                className={`px-2 py-1 rounded text-sm border ${
-                  dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+{[
+  { key: 'ago', label: 'Просрочено' },  
+  { key: 'today', label: 'Сегодня' },
+  { key: 'tomorrow', label: 'Завтра' },
+  { key: 'other', label: 'Потом' },
+].map(({ key, label }) => (
+  <button
+    key={key}
+    onClick={() => toggleDueFilter(key)}
+    className={`px-2 py-1 rounded text-sm border ${
+      dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+    }`}
+  >
+    {label} ({dueCounts[key]})
+  </button>
+))}
           </div>
         </div>
 
         <div className="w-px bg-gray-300 mx-1 self-stretch" />
 
-        {/* Роспись */}
+        {/* Роспись
         <div className="flex flex-col items-center">
           <span className="text-sm text-gray-500 mb-1 text-center">Роспись</span>
           <div className="flex gap-2 flex-wrap">
@@ -825,7 +864,7 @@ base.push({
           </div>
         </div>
 
-        <div className="w-px bg-gray-300 mx-1 self-stretch" />
+        <div className="w-px bg-gray-300 mx-1 self-stretch" /> */}
 
         {/* Сброс */}
         <div className="flex flex-col items-center">
@@ -855,7 +894,7 @@ base.push({
   )}
 </div>
       <div className="text-sm text-gray-600">
-        Всего: <span className="font-semibold">{tableData.length}</span>
+        Всего: <span className="font-semibold">{new Set(filteredData.filter(row => row.sedo_id != null).map(row => row.sedo_id)).size}</span>
       </div>
       <div
         ref={parentRef}
