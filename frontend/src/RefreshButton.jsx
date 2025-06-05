@@ -81,7 +81,7 @@ export default function RefreshButton({ onSuccess, id, disabled: propDisabled, n
     try {
       await checkStatusUntilReady();
 
-      const response = await fetch(`${backendUrl}/update/all_docs`, {
+      const response = await fetch(`${backendUrl}/update/all_docs?force=true`, {
         method: 'PATCH',
         credentials: "include",
       });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, useReducer } from 'react';
 import {
   useReactTable,
   flexRender,
@@ -183,7 +183,9 @@ export default function ParentChildTable({ data }) {
   const [showNoDue, setShowNoDue] = useState(false);
 // const [tableData, setTableData] = useState([]);
 
-const tableData = useMemo(() => {
+const [tableData, setTableData] = useState([]);
+
+useEffect(() => {
   let combined = [...data];
 
   if (showNoDue && noDueData.length > 0) {
@@ -198,8 +200,8 @@ const tableData = useMemo(() => {
     );
   }
 
-  return combined;
-}, [data, noDueData, showNoDue, statusFilter]);
+  setTableData(combined);
+}, [data, noDueData, showNoDue, statusFilter, selected]);
 
 const rawDataWithNoDue = useMemo(() => {
   let combined = [...data];
@@ -330,7 +332,7 @@ const handleUpdateMany = async (doclist) => {
   }
 };
 
-
+// const [, forceUpdate] = useReducer(x => x + 1, 0);
 
 const handleBulkUpdate = () => {
   const doclist = Array.from(selected);
@@ -400,7 +402,7 @@ const filteredData = useMemo(() => {
   }
 
   return result;
-}, [flatData, selectedPerson, dueFilter]);
+}, [flatData, selectedPerson, dueFilter, selected]);
 
   const personOptions = useMemo(() => {
     const persons = new Set();
@@ -906,7 +908,27 @@ base.push({
             
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id} className="bg-gray-100 border-b text-gray-700">
-                <th></th>
+                <th
+                className='grid place-items-center h-16'>
+                <input
+                  type="checkbox"
+                  checked={filteredData.length > 0 && filteredData.every(row => selected.has(Number(row.sedo_id)))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const newSelected = new Set(selected);
+                      filteredData.forEach(row => newSelected.add(Number(row.sedo_id)));
+                      setSelected(newSelected);
+                      // forceUpdate();
+                    } else {
+                      const newSelected = new Set(selected);
+                      filteredData.forEach(row => newSelected.delete(Number(row.sedo_id)));
+                      setSelected(newSelected);
+                      // forceUpdate();
+                    }
+                  }}
+                  className="h-4 w-4 text-gray-600 border-gray-300 rounded appearance-auto"
+                />
+              </th>
                 {headerGroup.headers.map(header => {
                   const isSortable = header.column.getCanSort();
                   return (
@@ -951,7 +973,7 @@ base.push({
                 data-index={virtualRow.index} 
                 className="bg-white border-b hover:bg-gray-50 transition-colors">
                   {isFirst && (
-                    <td rowSpan={span} className="px-2 py-3 w-6 border-b border-gray-200">
+                    <td rowSpan={span} className="px-2 py-3 w-8 border-b items-center justify-center border-gray-200">
                       <input
                         type="checkbox"
                         checked={selected.has(id)}

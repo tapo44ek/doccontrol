@@ -13,10 +13,11 @@ router = APIRouter(prefix="/update", tags=["Обновление"])
 @router.patch("/all_docs")
 async def get_controls(request: Request):
     uuid = request.cookies.get("uuid")
+    force = request.query_params.get("force") == "true"
     if not uuid:
         raise HTTPException(status_code=401, detail="uuid не найден")
     dataservice = DataService()
-    result = await dataservice.run_update_data_and_wait({"user_id": uuid})
+    result = await dataservice.run_update_data_and_wait({"user_id": uuid, "force": force})
     return result
 
 @router.patch("/all_sogl")

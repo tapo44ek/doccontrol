@@ -4,6 +4,7 @@ from pathlib import Path
 from core.config import ProjectManagementSettings
 import psycopg2
 from fastapi import HTTPException
+from datetime import datetime, timedelta
 
 
 class DocRepository:
@@ -103,7 +104,11 @@ class DocRepository:
 
     def get_docs_to_update(self, params :dict) -> None | dict:
 
-        sql = f'''
+        if params['force']:  ## True для "короткого" обновления
+            print('DB FORCE')
+            print( {(datetime.now().date() - timedelta(days=1)).strftime('%Y-%m-%d')})
+            print({(datetime.now().date() + timedelta(days=2)).strftime('%Y-%m-%d')})
+            sql = f'''
             SELECT DISTINCT doc_id
             FROM (
                 SELECT f.doc_id
@@ -114,27 +119,55 @@ class DocRepository:
                 )
                 AND jsonb_path_exists(
                     f.controls,
-                    '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                      '$[*] ? (
+                        @.person == $name &&
+                        @.due_date != null &&
+                        @.closed_date == null &&
+                        @.due_date >= $from_date &&
+                        @.due_date <= $to_date
+                    )',
+                    jsonb_build_object(
+                    'name', to_jsonb('{str(params['name'])}' ::text),
+                    'from_date', to_jsonb('{(datetime.now().date() - timedelta(days=1)).strftime('%Y-%m-%d')}' :: date),
+                    'to_date', to_jsonb('{(datetime.now().date() + timedelta(days=2)).strftime('%Y-%m-%d')}' :: date)
+                    )
                 )
-
-                UNION
-
-                SELECT f.doc_id
-                FROM public.flat_resolution f
-                WHERE jsonb_path_exists(
-                    f.recipients,
-                    '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
-                )
-                AND NOT jsonb_path_exists(
-                    f.executions,
-                    '$[*] ? (@.author == "{params["name"]}")'
-                )
-                AND NOT jsonb_path_exists(
-                    f.controls,
-                    '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
-                )
-            ) AS combined;
+                );
         '''
+            print(sql)
+        else:
+            sql = f'''
+                SELECT DISTINCT doc_id
+                FROM (
+                    SELECT f.doc_id
+                    FROM public.flat_resolution f
+                    WHERE jsonb_path_exists(
+                        f.recipients,
+                        '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                    )
+                    AND jsonb_path_exists(
+                        f.controls,
+                        '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                    )
+
+                    UNION
+
+                    SELECT f.doc_id
+                    FROM public.flat_resolution f
+                    WHERE jsonb_path_exists(
+                        f.recipients,
+                        '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                    )
+                    AND NOT jsonb_path_exists(
+                        f.executions,
+                        '$[*] ? (@.author == "{params["name"]}")'
+                    )
+                    AND NOT jsonb_path_exists(
+                        f.controls,
+                        '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                    )
+                ) AS combined;
+            '''
         connection = psycopg2.connect(
             host=ProjectManagementSettings.DB_HOST,
             user=ProjectManagementSettings.DB_USER,
@@ -157,6 +190,7 @@ class DocRepository:
         finally:
             cursor.close()
             connection.close()
+        
         return result
 
     def get_sogl_to_update(self, params :dict) -> None | dict:

@@ -23,6 +23,7 @@ import time
 from copy import deepcopy
 
 
+
 class DataService:
     def __init__(self):
         self.doc_repository = DocRepository()
@@ -199,7 +200,13 @@ class DataService:
 
 
     def make_search_doc_data(self, date_from, fio, sedo_id):
-        date_from = datetime.strftime(date_from, "%d.%m.%Y")
+
+        try:
+            date_from = datetime.strftime(date_from, "%d.%m.%Y")
+        except TypeError as e:
+            pass
+        except Exception as e:
+            print(e)
 
         params = {
             "check_all_documents": "on",
@@ -361,11 +368,19 @@ class DataService:
         return params
 
 
-    def make_search_doc_data_forward(self, date_to, fio, sedo_id):
-        date_to = datetime.strftime(date_to, "%d.%m.%Y")
+    def make_search_doc_data_forward(self, date_to, date_from, fio, sedo_id, force):
+
+        try:
+            date_to = datetime.strftime(date_to, "%d.%m.%Y")
+        except TypeError as e:
+            pass
+        except Exception as e:
+            print(e)
+
         boss_list = [1558294, 78164285]
         # print(sedo_id)
-        if sedo_id in boss_list:
+        if force:
+            print('CHOOOOOOO')
             # print('--------\nnachalnick detected\n------')
             params = {
                 "check_all_documents": "on",
@@ -479,7 +494,7 @@ class DataService:
                 "res_curator": "",
                 "res_curator_id": "",
                 "r_control": "2",
-                "r_control_f": "",
+                "r_control_f": f"{date_from}",
                 "r_control_t": f"{date_to}",
                 "r_otv": "0",
                 "r_dback": "0",
@@ -491,7 +506,7 @@ class DataService:
                 "r_another_control": "0",
                 "r_oncontrol": "2",
                 "r_oncontrol_f": "",
-                "r_oncontrol_t": f"{date_to}",
+                "r_oncontrol_t": "",
                 "unset_control": "0",
                 "unset_control_f": "",
                 "unset_control_t": "",
@@ -732,9 +747,9 @@ class DataService:
 
             if match:
                 person = match.group(1)
-                due_date = match.group(2)
-                modified_date = match.group(3) or None
-                closed_date = match.group(4) or None
+                due_date = datetime.strptime(match.group(2), '%d.%m.%Y').strftime('%Y-%m-%d') if match.group(2) else None
+                modified_date = datetime.strptime(match.group(3), '%d.%m.%Y').strftime('%Y-%m-%d') if match.group(3) else None
+                closed_date = datetime.strptime(match.group(4), '%d.%m.%Y').strftime('%Y-%m-%d') if match.group(4) else None
                 overdue_days = int(match.group(5)) if match.group(5) else None
 
                 result.append({'person': person, 
@@ -1341,8 +1356,11 @@ class DataService:
         return res
 
 
-    def get_doc_ids(self, date_from, date_to, fio, sedo_id, session, DNSID):
-        
+    def get_doc_ids(self, date_from, date_to, fio, sedo_id, session, DNSID, force=False):
+        if force:
+            date_from = (datetime.now().date() - timedelta(days=1)).strftime('%d.%m.%Y')
+            date_to = (datetime.now().date() + timedelta(days=2)).strftime('%d.%m.%Y')
+
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
@@ -1351,7 +1369,7 @@ class DataService:
             'Sec-Fetch-Dest': 'document'
         }
         data = self.make_search_doc_data(date_from, fio, sedo_id)
-        data_forward = self.make_search_doc_data_forward(date_to, fio, sedo_id)
+        data_forward = self.make_search_doc_data_forward(date_to, date_from, fio, sedo_id, force)
         url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
         r2 = session.post(url_search, data=data, headers=headers)
         first_soup = BeautifulSoup(r2.text, 'html.parser')
@@ -1375,7 +1393,7 @@ class DataService:
         def worker(page):
             return self.process_doc_ids(session, DNSID, headers, page)
 
-        with ThreadPoolExecutor(max_workers=75) as executor:
+        with ThreadPoolExecutor(max_workers=50) as executor:
             results = list(executor.map(worker, all_pages))
 
 
@@ -1421,7 +1439,7 @@ class DataService:
         flat_doc_ids = sum(results, [])
         print (count_pages)
         doc_ids = doc_ids + flat_doc_ids
-        print(len(doc_ids))
+        print('all docs count: ', len(doc_ids))
 
 
         doc_ids = list(dict.fromkeys(doc_ids))
@@ -1869,17 +1887,21 @@ class DataService:
 
     def update_data(self, params :dict):
         user_repository = UserRepository()
+        force = params['force']
         params = user_repository.no_pool_get_user_info_by_id(params['user_id'])
         fio = params['name']
+        params['force'] = force
         date_from = datetime.now() - timedelta(days=params['start_d_days'])
         date_to = datetime.now() + timedelta(days=params['end_d_days'])
 
         db_doc_ids = self.doc_repository.get_docs_to_update(params=params)
         db_doc_ids = [str(x) for x in db_doc_ids]
+        print('before db query docs = ', len(db_doc_ids))
 
         session, DNSID = self.get_session()
-        doc_ids = self.get_doc_ids(date_from, date_to, fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
+        doc_ids = self.get_doc_ids(date_from, date_to, fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID, force=force)
         full_doc_ids = list(dict.fromkeys(db_doc_ids + doc_ids))
+        print('before start MP all docs = ', len(full_doc_ids))
 
         with ProcessPoolExecutor(max_workers=50) as executor:
             futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in full_doc_ids]
