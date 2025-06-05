@@ -1952,16 +1952,25 @@ class DataService:
 
     async def run_update_data_and_wait(self, params :dict) -> dict:
         try:
-            result = await self.sedo_data.set_env_update_on(params['user_id'])
+            if params['force']:
+                type_=2
+            else: type_=1
+            result = await self.sedo_data.set_env_update_on(params['user_id'], type_=type_)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
         try:
             result = await asyncio.to_thread(self.update_data, params)
             result = await asyncio.to_thread(self.update_sogl_data, params)
-            result = await self.sedo_data.set_env_update_off(params['user_id'])
+            if params['force']:
+                type_=2
+            else: type_=1
+            result = await self.sedo_data.set_env_update_off(params['user_id'], type_=type_)
         except Exception as e:
             try:
-                result = await self.sedo_data.set_env_update_off(params['user_id'])
+                if params['force']:
+                    type_=2
+                else: type_=1
+                result = await self.sedo_data.set_env_update_off(params['user_id'], type_=type_)
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
             raise HTTPException(status_code=500, detail=str(traceback.print_exc()))

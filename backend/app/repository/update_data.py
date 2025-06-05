@@ -19,18 +19,18 @@ class SedoData:
                 user_uuid = $1,
                 updated_at = NOW()
             WHERE
-                id = 1;    
+                id = $2;    
         '''
 
         query_history = '''
         INSERT INTO public.history (env_id, user_uuid, started_at)
         VALUES ($2, $1, NOW());
         '''
-        if type_ == 1:
+        if type_ in [1, 2]:
             try:
                 async with get_connection() as conn:
                     async with conn.transaction():
-                        await conn.execute(query_env, uuid)
+                        await conn.execute(query_env, uuid, type_)
             except Exception as e:
                 raise HTTPException(500, detail=f"set env error: {str(e)}")
 
@@ -53,7 +53,7 @@ class SedoData:
                 user_uuid = NULL,
                 updated_at = NOW()
             WHERE
-                id = 1;    
+                id = $1;    
         '''
 
         query_history = '''
@@ -69,11 +69,11 @@ class SedoData:
             );
         '''
 
-        if type_ == 1:
+        if type_ in [1, 2]:
             try:
                 async with get_connection() as conn:
                     async with conn.transaction():
-                        await conn.execute(query_env)
+                        await conn.execute(query_env, type_)
             except Exception as e:
                 raise HTTPException(500, detail=f"unset env error: {str(e)}")
 
