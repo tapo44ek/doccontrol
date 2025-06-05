@@ -11,7 +11,7 @@ from dateutil.parser import isoparse
 
 class SedoData:
 
-    async def set_env_update_on(self, uuid: str):
+    async def set_env_update_on(self, uuid: str, type_: int = 1 ):
         query_env = '''
             UPDATE public.env
             SET
@@ -24,27 +24,28 @@ class SedoData:
 
         query_history = '''
         INSERT INTO public.history (env_id, user_uuid, started_at)
-        VALUES (1, $1, NOW());
+        VALUES ($2, $1, NOW());
         '''
+        if type_ == 1:
+            try:
+                async with get_connection() as conn:
+                    async with conn.transaction():
+                        await conn.execute(query_env, uuid)
+            except Exception as e:
+                raise HTTPException(500, detail=f"set env error: {str(e)}")
 
         try:
             async with get_connection() as conn:
                 async with conn.transaction():
-                    await conn.execute(query_env, uuid)
-        except Exception as e:
-            raise HTTPException(500, detail=f"set env error: {str(e)}")
-
-        try:
-            async with get_connection() as conn:
-                async with conn.transaction():
-                    await conn.execute(query_history, uuid)
+                    await conn.execute(query_history, uuid, type_)
         except Exception as e:
             raise HTTPException(500, detail=f"insert history error: {str(e)}")
         
         return {'status_code': '200', 'detail': 'success'}
 
 
-    async def set_env_update_off(self, uuid: str):
+    async def set_env_update_off(self, uuid: str, type_: int = 1):
+
         query_env = '''
             UPDATE public.env
             SET
@@ -68,17 +69,18 @@ class SedoData:
             );
         '''
 
-        try:
-            async with get_connection() as conn:
-                async with conn.transaction():
-                    await conn.execute(query_env)
-        except Exception as e:
-            raise HTTPException(500, detail=f"unset env error: {str(e)}")
+        if type_ == 1:
+            try:
+                async with get_connection() as conn:
+                    async with conn.transaction():
+                        await conn.execute(query_env)
+            except Exception as e:
+                raise HTTPException(500, detail=f"unset env error: {str(e)}")
 
         try:
             async with get_connection() as conn:
                 async with conn.transaction():
-                    await conn.execute(query_env)
+                    # await conn.execute(query_env)
                     if uuid:
                         await conn.execute(query_history, uuid)
 

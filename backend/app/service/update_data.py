@@ -1056,7 +1056,7 @@ class DataService:
                                                             if not isinstance(blyat_blyat_tag, Tag):
                                                                 continue
                                                             if 'resolution-executor-history' in blyat_blyat_tag.get('class', [''])[0]:
-                                                                man = parse_control_dates(blyat_blyat_tag)
+                                                                man = self.parse_control_dates(blyat_blyat_tag)
 
                                                                 if current_group is not None:
 
@@ -1499,7 +1499,7 @@ class DataService:
         try:
             docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
         except:
-            with open("./test_docs/res_33.html", "w") as f:
+            with open("../test_docs/res_33.html", "w") as f:
                 f.write(response.text)
             print(response.status_code)
             print(page)
@@ -1969,15 +1969,15 @@ class DataService:
 
     async def run_update_sogl_and_wait(self, params :dict) -> dict:
         try:
-            result = await self.sedo_data.set_env_update_on(params['user_id'])
+            result = await self.sedo_data.set_env_update_on(params['user_id'], type_=3)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
         try:
             result = await asyncio.to_thread(self.update_sogl_data, params)
-            result = await self.sedo_data.set_env_update_off(params['user_id'])
+            result = await self.sedo_data.set_env_update_off(params['user_id'], type_=3)
         except Exception as e:
             try:
-                result = await self.sedo_data.set_env_update_off(params['user_id'])
+                result = await self.sedo_data.set_env_update_off(params['user_id'], type_=3)
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
             raise HTTPException(status_code=500, detail=str(traceback.print_exc()))
