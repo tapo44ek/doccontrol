@@ -1503,6 +1503,7 @@ class DataService:
             #     f.write(response.text)
             print(response.status_code)
             print(page)
+            return 0
             # exit()
 
         for docs in docs_ids_soap:
