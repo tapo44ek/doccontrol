@@ -201,7 +201,7 @@ useEffect(() => {
   }
 
   setTableData(combined);
-}, [data, noDueData, showNoDue, statusFilter, selected]);
+}, [data, noDueData, showNoDue, statusFilter]);
 
 const rawDataWithNoDue = useMemo(() => {
   let combined = [...data];

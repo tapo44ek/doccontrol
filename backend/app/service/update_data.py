@@ -1393,7 +1393,7 @@ class DataService:
         def worker(page):
             return self.process_doc_ids(session, DNSID, headers, page)
 
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        with ThreadPoolExecutor(max_workers=40) as executor:
             results = list(executor.map(worker, all_pages))
 
 
@@ -1430,7 +1430,7 @@ class DataService:
         def worker(page):
             return self.process_doc_ids(session, DNSID, headers, page)
 
-        with ThreadPoolExecutor(max_workers=75) as executor:
+        with ThreadPoolExecutor(max_workers=40) as executor:
             results = list(executor.map(worker, all_pages))
 
 
@@ -1479,7 +1479,7 @@ class DataService:
         def worker(page):
             return self.process_doc_ids(session, DNSID, headers, page)
 
-        with ThreadPoolExecutor(max_workers=75) as executor:
+        with ThreadPoolExecutor(max_workers=40) as executor:
             results = list(executor.map(worker, all_pages))
 
 
@@ -1903,7 +1903,7 @@ class DataService:
         full_doc_ids = list(dict.fromkeys(db_doc_ids + doc_ids))
         print('before start MP all docs = ', len(full_doc_ids))
 
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in full_doc_ids]
 
             for future in futures:
@@ -1921,7 +1921,7 @@ class DataService:
         print(params['sedo_id'])
         doc_ids = self.get_sogl_ids(fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
         full_doc_ids = list(dict.fromkeys(db_sogl_ids + doc_ids))
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_sogl, session, doc_id, DNSID) for doc_id in full_doc_ids]
 
         for future in futures:
@@ -1931,7 +1931,7 @@ class DataService:
     def update_sogl_by_list(self, doclist):
         session, DNSID = self.get_session()
         
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_sogl, session, doc_id, DNSID) for doc_id in doclist]
 
             for future in futures:
@@ -1943,7 +1943,7 @@ class DataService:
     def update_docs_by_list(self, doclist):
         session, DNSID = self.get_session()
         
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_doc, session, doc_id, DNSID) for doc_id in doclist]
 
             for future in futures:
