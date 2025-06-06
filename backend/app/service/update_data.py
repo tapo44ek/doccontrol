@@ -1499,11 +1499,11 @@ class DataService:
         try:
             docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
         except:
-            with open("../test_docs/res_33.html", "w") as f:
-                f.write(response.text)
+            # with open("../test_docs/res_33.html", "w") as f:
+            #     f.write(response.text)
             print(response.status_code)
             print(page)
-            exit()
+            # exit()
 
         for docs in docs_ids_soap:
             try:
