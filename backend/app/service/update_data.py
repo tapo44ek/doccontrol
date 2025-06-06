@@ -696,6 +696,9 @@ class DataService:
                 "csdr_init_date_0_t": "",
             }
 
+        if sedo_id in boss_list:
+            params["r_oncontrol"] = "2"
+            params["r_oncontrol_t"] = f"{date_to}"
         return params
 
     def get_session(self):
