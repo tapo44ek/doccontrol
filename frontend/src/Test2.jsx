@@ -394,7 +394,6 @@ const filteredData = useMemo(() => {
       date.setHours(0, 0, 0, 0);
 
       return (
-        (dueFilter.has('all')) ||
         (dueFilter.has('ago') && date.getTime() < today.getTime()) ||
         (dueFilter.has('today') && date.getTime() === today.getTime()) ||
         (dueFilter.has('tomorrow') && date.getTime() === tomorrow.getTime()) ||
@@ -708,7 +707,7 @@ base.push({
   }, [bossNames]);
 
   const table = useReactTable({
-    data: flatData,
+    data: filteredData,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -826,8 +825,17 @@ base.push({
         <div className="flex flex-col items-center">
           <span className="text-sm text-gray-500 mb-1 text-xs text-center">Сроки</span>
           <div className="flex gap-1 flex-wrap">
+
+  <button
+    key='all'
+    className={`px-2 py-1 rounded text-xs border ${
+      dueFilter.has('all') ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+    }`}
+  >
+    Все ({dueCounts['all']})
+  </button>
 {[
-  { key: 'all', label: 'Все' },
+  // { key: 'all', label: 'Все' },
   { key: 'ago', label: 'Просрочено' },  
   { key: 'today', label: 'Сегодня' },
   { key: 'tomorrow', label: 'Завтра' },
