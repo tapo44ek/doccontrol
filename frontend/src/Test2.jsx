@@ -33,6 +33,7 @@ const toArray = (maybeArray) => Array.isArray(maybeArray) ? maybeArray : [];
 
 const statusDefs = {
   unassigned: (row) => !row.children_controls,
+  not_prepared: (row) => !row.s_dgi_number && !row.s_started_at && !!row.children_controls,
   prepared: (row) => !!row.s_dgi_number && !row.s_started_at,
   in_approval: (row) => {
     const struct = toArray(row?.s_structure);
@@ -393,6 +394,7 @@ const filteredData = useMemo(() => {
       date.setHours(0, 0, 0, 0);
 
       return (
+        (dueFilter.has('all')) ||
         (dueFilter.has('ago') && date.getTime() < today.getTime()) ||
         (dueFilter.has('today') && date.getTime() === today.getTime()) ||
         (dueFilter.has('tomorrow') && date.getTime() === tomorrow.getTime()) ||
@@ -706,7 +708,7 @@ base.push({
   }, [bossNames]);
 
   const table = useReactTable({
-    data: filteredData,
+    data: flatData,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -737,6 +739,7 @@ base.push({
     tomorrow.setDate(today.getDate() + 1);
 
     const dueCounts = {
+    all: 0,
     ago: 0,
     today: 0,
     tomorrow: 0,
@@ -745,7 +748,7 @@ base.push({
 
     const seenSedoIds = new Set();
 
-    for (const row of filteredData) {
+    for (const row of flatData) {
     const sedoId = row.sedo_id;
     if (sedoId == null || seenSedoIds.has(sedoId)) continue;
 
@@ -756,7 +759,7 @@ base.push({
 
     const date = new Date(rawDue);
     date.setHours(0, 0, 0, 0);
-
+    dueCounts.all++;
     if (date < today) dueCounts.ago++;
     else if (date.getTime() === today.getTime()) dueCounts.today++;
     else if (date.getTime() === tomorrow.getTime()) dueCounts.tomorrow++;
@@ -767,13 +770,7 @@ base.push({
     <div className="relative flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50 w-full p-4">
 
       <div className="mb-4">
-        <div className="flex justify-center items-center">
-<LetterStatusHeader
-  allData={rawDataWithNoDue}
-  activeStatus={statusFilter}
-  onFilterChange={setStatusFilter}
-/>
-</div>
+
   <div className="flex justify-between items-center">
     <button
       onClick={() => setShowFilters(prev => !prev)}
@@ -790,12 +787,12 @@ base.push({
 
         {/* Блок "Исполнители" */}
         <div className="flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1 text-center">Исполнители</span>
-          <div className="flex gap-4 items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center text-xs">Исполнители</span>
+          <div className="flex gap-2 items-center">
             <select
               value={selectedPerson || ''}
               onChange={(e) => setSelectedPerson(e.target.value || null)}
-              className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-fit rounded-md border border-gray-300 bg-white px-4 py-2 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Все исполнители</option>
               {personOptions.map(person => (
@@ -809,9 +806,9 @@ base.push({
 
         {/* Без срока */}
         <div className="flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1 text-center">Без срока</span>
-          <div className="flex gap-4 items-center py-2">
-            <label className="inline-flex items-center gap-2 text-sm">
+          <span className="text-sm text-gray-500 mb-1 text-center text-xs">Без срока</span>
+          <div className="flex gap-1 items-center py-2">
+            <label className="inline-flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
                 checked={showNoDue}
@@ -827,9 +824,10 @@ base.push({
 
         {/* Сроки */}
         <div className="flex flex-col items-center">
-          <span className="text-sm text-gray-500 mb-1 text-center">Сроки</span>
-          <div className="flex gap-2 flex-wrap">
+          <span className="text-sm text-gray-500 mb-1 text-xs text-center">Сроки</span>
+          <div className="flex gap-1 flex-wrap">
 {[
+  { key: 'all', label: 'Все' },
   { key: 'ago', label: 'Просрочено' },  
   { key: 'today', label: 'Сегодня' },
   { key: 'tomorrow', label: 'Завтра' },
@@ -838,7 +836,7 @@ base.push({
   <button
     key={key}
     onClick={() => toggleDueFilter(key)}
-    className={`px-2 py-1 rounded text-sm border ${
+    className={`px-2 py-1 rounded text-xs border ${
       dueFilter.has(key) ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
     }`}
   >
@@ -873,7 +871,7 @@ base.push({
           <span className="text-sm text-gray-500 mb-1 invisible">Сброс</span>
           <button
             onClick={handleClearAllFilters}
-            className="px-2 py-1 rounded text-sm border bg-white text-gray-700"
+            className="px-2 py-1 rounded text-xs border bg-white text-gray-700"
           >
             Сбросить фильтры
           </button>
@@ -884,7 +882,7 @@ base.push({
       <button
         disabled={selected.size === 0 || isBulkUpdating}
         onClick={handleBulkUpdate}
-        className={`px-4 py-2 text-sm rounded ${
+        className={`px-4 py-2 text-xs rounded ${
           selected.size === 0 || isBulkUpdating
             ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
             : 'bg-blue-600 text-white'
@@ -894,6 +892,13 @@ base.push({
       </button>
     </div>
   )}
+</div>
+        <div className="flex justify-center items-center">
+<LetterStatusHeader
+  allData={filteredData}
+  activeStatus={statusFilter}
+  onFilterChange={setStatusFilter}
+/>
 </div>
       <div className="text-sm text-gray-600">
         Всего: <span className="font-semibold">{new Set(filteredData.filter(row => row.sedo_id != null).map(row => row.sedo_id)).size}</span>

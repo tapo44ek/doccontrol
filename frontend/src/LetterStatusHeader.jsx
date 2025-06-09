@@ -10,6 +10,11 @@ const statusDefs = {
     label: 'Не расписано',
     condition: (row) => !row.children_controls
   },
+    'not_prepared': {
+    
+    label: 'Не подготовлен',
+    condition: (row) => !row.s_dgi_number && !row.s_started_at && row.children_controls
+  },
     'prepared': {
     
     label: 'Подготовлен',
@@ -57,21 +62,23 @@ export const LetterStatusHeader = ({ allData, onFilterChange, activeStatus }) =>
   const counts = Object.fromEntries(
     Object.entries(statusDefs).map(([key, def]) => [
       key,
-      allData.filter(def.condition).length,
+      new Set(allData.filter(def.condition).map(item => item.res_id)).size,
     ])
   );
-
+  // console.log(allData)
   return (
-    <div className="flex gap-3 flex-wrap bg-gray-100 p-2 rounded-xl items-center text-sm">
+    <div className="bg-gray-100 rounded-xl items-center text-xs">
+      <div className="gap-2 flex-wrap bg-gray-100 p-1 rounded-xl items-center text-center text-sm" >Этапы работы</div>
+    <div className="flex gap-2 flex-wrap bg-gray-100 p-1 rounded-xl items-center text-xs">
       <button
         onClick={() => onFilterChange([])}
-        className={`px-3 py-1 rounded-md border ${
+        className={`px-1 py-1 rounded-md border ${
           activeStatus.length === 0
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-800"
         }`}
       >
-        Все ({allData.length})
+        Все ({new Set(allData.map(item => item.res_id)).size})
       </button>
       {Object.entries(statusDefs).map(([key, def]) => (
         <button
@@ -82,7 +89,7 @@ export const LetterStatusHeader = ({ allData, onFilterChange, activeStatus }) =>
               : [...activeStatus, key];
             onFilterChange(newSet);
           }}
-          className={`px-3 py-1 rounded-md border ${
+          className={`px-1 py-1 rounded-md border ${
             activeStatus.includes(key)
               ? "bg-blue-600 text-white"
               : "bg-white text-gray-800"
@@ -91,6 +98,7 @@ export const LetterStatusHeader = ({ allData, onFilterChange, activeStatus }) =>
           {def.label} ({counts[key]})
         </button>
       ))}
+    </div>
     </div>
   );
 };
