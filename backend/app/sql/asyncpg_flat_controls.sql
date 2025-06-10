@@ -94,53 +94,53 @@ boss3_node AS (
 executor_due AS (
     SELECT DISTINCT ON (leaf_id)
         leaf_id,
-        c ->> 'due_date' AS due_date
+        COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM initial_leafs,
          jsonb_array_elements(leaf_controls) AS c
     WHERE c ->> 'person' = $7
       AND c ->> 'closed_date' IS NULL
     ORDER BY leaf_id,
-        CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
-        ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
+        CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp - NOW())))
 ),
 
 boss_due AS (
     SELECT DISTINCT ON (b.leaf_id)
         b.leaf_id,
-        c ->> 'due_date' AS due_date
+        COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss_node b,
          jsonb_array_elements(b.controls) AS c
     WHERE c ->> 'person' = $8
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
-        CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
-        ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
+        CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp - NOW())))
 ),
 
 boss2_due AS (
     SELECT DISTINCT ON (b.leaf_id)
         b.leaf_id,
-        c ->> 'due_date' AS due_date
+        COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss2_node b,
          jsonb_array_elements(b.controls) AS c
     WHERE c ->> 'person' = $9
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
-        CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
-        ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
+        CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp - NOW())))
 ),
 
 boss3_due AS (
     SELECT DISTINCT ON (b.leaf_id)
         b.leaf_id,
-        c ->> 'due_date' AS due_date
+        COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss3_node b,
          jsonb_array_elements(b.controls) AS c
     WHERE c ->> 'person' = $10
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
-        CASE WHEN (c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
-        ABS(EXTRACT(EPOCH FROM ((c ->> 'due_date')::timestamp - NOW())))
+        CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp - NOW())))
 ),
 
 recursive_children AS (
