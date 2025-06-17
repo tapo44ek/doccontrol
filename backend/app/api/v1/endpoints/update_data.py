@@ -48,8 +48,8 @@ async def update_docs_by_id(request: Request, params: UpdateDocs):
     params_dict = params.dict()
     params_dict['user_id'] = uuid
     try:
-        response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
-        # response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
+        # response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
+        response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
         print(response)
         if response.ok:
             data = response.json()

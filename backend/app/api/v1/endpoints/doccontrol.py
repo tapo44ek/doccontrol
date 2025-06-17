@@ -17,8 +17,8 @@ async def get_controls(request: Request):
     docservice = DocService()
 
     try:
-        response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
-        # response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
+        # response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
+        response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
         print(response)
         if response.ok:
             data = response.json()
@@ -53,8 +53,8 @@ async def get_wo_controls(request: Request):
     docservice = DocService()
 
     try:
-        response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
-        # response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
+        # response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
+        response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
         print(response)
         if response.ok:
             data = response.json()
