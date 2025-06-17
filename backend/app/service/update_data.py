@@ -1164,6 +1164,7 @@ class DataService:
             print('!!!!!! \n', doc_id, '\n !!!!!!!')
             return 0
         answer_result = []
+        projects = []
         recipients = []
         result = {
         "sedo_id": doc_id,
@@ -1177,7 +1178,8 @@ class DataService:
         "executor_company": '',
         "recipients": recipients,
         "answer": answer_result,
-        "description": ''
+        "description": '',
+        "projects": projects
         }
 
         element = doccard_table.find_all('td', attrs={"data-tour":"1"}) # Номер документа 12
@@ -1262,6 +1264,23 @@ class DataService:
                         prev_answer_id = answer_id
             except Exception as e: pass
                         
+        element = doccard_table.find('td', string=lambda text: text and 'Проектная работа:' in text)
+
+        if element:
+            parent = element.find_parent('tr')  # Получаем <tr>, содержащий нужный <td>
+            divs = parent.find_all('div')  # Находим все <div> внутри <tr>
+            for div in divs:
+                try:
+                    sogl_id = div.a.get('href')
+                    match = re.search(r"id=(\d+)", sogl_id)
+                    sogl_id = match.group(1) if match else None
+                    sogl_number = div.a.text.strip()
+                    print(sogl_id, sogl_number, sep=' || ')
+                    projects.append({"project_id": sogl_id, "project_number": sogl_number})
+                except Exception as e:
+                    pass
+                # print(div.text)
+
         element = doccard_table.find_all('td', attrs={"colspan": "3", "class": "td-1 highlightable b_new"})
 
         for item in element:
@@ -1921,10 +1940,12 @@ class DataService:
         print(fio)
         db_sogl_ids = self.doc_repository.get_sogl_to_update(params=params)
         db_sogl_ids = [str(x) for x in db_sogl_ids]
+        db_additional_sogl_ids = self.doc_repository.get_sogl_from_docs_to_update(params=params)
+        db_additional_sogl_ids = [str(x) for x in db_additional_sogl_ids]
         session, DNSID = self.get_session()
         print(params['sedo_id'])
         doc_ids = self.get_sogl_ids(fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
-        full_doc_ids = list(dict.fromkeys(db_sogl_ids + doc_ids))
+        full_doc_ids = list(dict.fromkeys(db_sogl_ids + doc_ids + db_additional_sogl_ids))
         with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_sogl, session, doc_id, DNSID) for doc_id in full_doc_ids]
 

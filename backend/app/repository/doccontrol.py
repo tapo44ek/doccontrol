@@ -5,12 +5,15 @@ from core.config import ProjectManagementSettings
 import psycopg2
 from fastapi import HTTPException
 from datetime import datetime, timedelta
+from pprint import pprint
+import json
 
 
 class DocRepository:
     SQL_PATH = Path("./sql/asyncpg_flat_controls.sql")
     SQL_PATH_WO_CONTROL = Path("./sql/asyncpg_flat_wo_controls.sql")
     SQL_PATH_DOC_LIST = Path("./sql/asyncpg_flat_controls_doclist.sql")
+
     async def get_doc_controls(self, params: dict) -> list[dict]:
         sql_template = self.SQL_PATH.read_text(encoding="utf-8")
         query_params = [
@@ -24,10 +27,11 @@ class DocRepository:
             params["boss1_name"],                                                          # $8
             params["boss2_name"],                                                          # $9
             params["boss3_name"],                                                         # $10
-            int(params["sedo_id"])                                               # $11 (author_id)
+            int(params["sedo_id"]),                                               # $11 (author_id)
+            params["subordinate_sedo_ids"]
         ]
 
-        print(query_params)
+        pprint(query_params)
         async with get_connection() as conn:
             stmt = await conn.prepare(sql_template)
             rows = await stmt.fetch(*query_params)
@@ -67,7 +71,8 @@ class DocRepository:
             params["boss1_name"],                                                          # $8
             params["boss2_name"],                                                          # $9
             params["boss3_name"],                                                         # $10
-            int(params["sedo_id"])                                               # $11 (author_id)
+            int(params["sedo_id"]),                                               # $11 (author_id)
+            params["subordinate_sedo_ids"]                                           # $11 (author_id)
         ]
 
         print(query_params)
@@ -91,7 +96,8 @@ class DocRepository:
             params["boss1_name"],                                                          # $8
             params["boss2_name"],                                                          # $9
             params["boss3_name"],                                                         # $10
-            int(params["sedo_id"])                                               # $11 (author_id)
+            int(params["sedo_id"]),                                               # $11 (author_id)
+            params["subordinate_sedo_ids"]                                               # $11 (author_id)
         ]
 
         print(query_params)
@@ -224,4 +230,67 @@ class DocRepository:
             connection.close()
         return result
 
+    def get_sogl_from_docs_to_update(self, params :dict) -> None | dict:
+        sql = f'''
+                SELECT 
+                    (elem->>'project_id')::int AS sogl_id
+                FROM public.documents AS a
+                JOIN LATERAL jsonb_array_elements(a.projects) AS elem ON TRUE
+                INNER JOIN (
+                    SELECT DISTINCT doc_id
+                    FROM (
+                        SELECT f.doc_id
+                        FROM public.flat_resolution f
+                        WHERE jsonb_path_exists(
+                            f.recipients,
+                            '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                        )
+                        AND jsonb_path_exists(
+                            f.controls,
+                            '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                        )
+
+                        UNION
+
+                        SELECT f.doc_id
+                        FROM public.flat_resolution f
+                        WHERE jsonb_path_exists(
+                            f.recipients,
+                            '$[*] ? (@.sedo_id == "{params["sedo_id"]}")'
+                        )
+                        AND NOT jsonb_path_exists(
+                            f.executions,
+                            '$[*] ? (@.author == "{params["name"]}")'
+                        )
+                        AND NOT jsonb_path_exists(
+                            f.controls,
+                            '$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)'
+                        )
+                    ) AS combined
+                ) combined_docs ON a.sedo_id = combined_docs.doc_id;   
+
+        '''
+        connection = psycopg2.connect(
+            host=ProjectManagementSettings.DB_HOST,
+            user=ProjectManagementSettings.DB_USER,
+            password=ProjectManagementSettings.DB_PASSWORD,
+            port=ProjectManagementSettings.DB_PORT,
+            database=ProjectManagementSettings.DB_NAME
+        )
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(sql)
+
+            rows = cursor.fetchall()
+            if rows:
+                return [row[0] for row in rows]
+            else: return []
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=e)
+        finally:
+            cursor.close()
+            connection.close()
+        return result
 

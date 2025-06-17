@@ -265,9 +265,9 @@ class SedoData:
                     sedo_id, date, dgi_number, description,
                     executor_id, executor_fio, executor_company,
                     signed_by_id, signed_by_fio, signed_by_company,
-                    answer, recipients
+                    answer, recipients, projects
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (sedo_id) DO UPDATE SET
                     date = EXCLUDED.date,
                     dgi_number = EXCLUDED.dgi_number,
@@ -280,6 +280,7 @@ class SedoData:
                     signed_by_company = EXCLUDED.signed_by_company,
                     answer = EXCLUDED.answer,
                     recipients = EXCLUDED.recipients,
+                    projects = EXCLUDED.projects,
                     updated_at = NOW()
             """, (
                 doc['sedo_id'],
@@ -293,7 +294,8 @@ class SedoData:
                 doc['signed_by_fio'],
                 doc['signed_by_company'],
                 json.dumps(doc['answer'], ensure_ascii=False),
-                json.dumps(doc['recipients'], ensure_ascii=False)
+                json.dumps(doc['recipients'], ensure_ascii=False),
+                json.dumps(doc['projects'], ensure_ascii=False),
             ))
 
             connection.commit()

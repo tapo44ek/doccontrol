@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException, Body, Request
+import requests
 from schemas.update_data import (
     SedoUpdate
 )
@@ -46,6 +47,22 @@ async def update_docs_by_id(request: Request, params: UpdateDocs):
     print(params)
     params_dict = params.dict()
     params_dict['user_id'] = uuid
+    try:
+        response = requests.get("https://dsa.mlc.gov/auth_api/v1/user/get_subordinates", cookies=request.cookies)
+        # response = requests.get("http://10.9.96.160:5153/v1/user/get_subordinates", cookies=request.cookies)
+        print(response)
+        if response.ok:
+            data = response.json()
+            print(data)
+            subordinates = data.get('subordinates', [0])
+        elif response.status_code == 401:
+            raise HTTPException(401, detail='Auth token is incorrect')
+        else:
+            subordinates = [0]
+    except Exception as e:
+        print(e)
+        subordinates = [0]
+    params_dict['subordinates'] = subordinates
     dataservice = DataService()
     result = await dataservice.run_update_list_docs(params_dict)
     return result

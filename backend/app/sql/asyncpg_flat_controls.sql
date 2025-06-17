@@ -305,9 +305,15 @@ LEFT JOIN filtered_sogly s
        '$[*] ? (@.answer_id == $id)',
        jsonb_build_object('id', to_jsonb(d.sedo_id))
      )
- AND jsonb_path_exists(
+ AND (jsonb_path_exists(
        s.structure,
        '$.** ? (@.sedo_id == $target)',
        jsonb_build_object('target', to_jsonb($11))
      )
+ OR EXISTS (
+  SELECT 1
+  FROM jsonb_path_query(s.structure, '$.**') AS node
+  WHERE (node->>'sedo_id')::int = ANY($12::int[])
+)
+    )
 ORDER BY d.sedo_id ASC;
