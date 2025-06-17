@@ -10,10 +10,13 @@ class DocService:
         subordinates = params['subordinates']
         sub_sedo_ids = []
         if len(subordinates) > 0:
-            for user in subordinates:
-                user_info = await self.user_repository.get_user_info_by_id(user)
-                if user_info:
-                    sub_sedo_ids.append(user_info['sedo_id'])
+            try:
+                for user in subordinates:
+                    user_info = await self.user_repository.get_user_info_by_id(user)
+                    if user_info:
+                        sub_sedo_ids.append(user_info['sedo_id'])
+            except Exception as e:
+                print(e)
         
         params = await self.user_repository.get_user_info_by_id(params['user_id'])
         params['subordinate_sedo_ids'] = sub_sedo_ids if len(subordinates) > 0 else [1]
@@ -30,10 +33,13 @@ class DocService:
         subordinates = params['subordinates']
         sub_sedo_ids = []
         if len(subordinates) > 0:
-            for user in subordinates:
-                user_info = await self.user_repository.get_user_info_by_id(user)
-                if user_info:
-                    sub_sedo_ids.append(user_info['sedo_id'])
+            try:
+                for user in subordinates:
+                    user_info = await self.user_repository.get_user_info_by_id(user)
+                    if user_info:
+                        sub_sedo_ids.append(user_info['sedo_id'])
+            except Exception as e:
+                print(e)
         
         params = await self.user_repository.get_user_info_by_id(params['user_id'])
         params['subordinate_sedo_ids'] = sub_sedo_ids if len(subordinates) > 0 else [1]
