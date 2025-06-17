@@ -16,7 +16,7 @@ class DocService:
                     sub_sedo_ids.append(user_info['sedo_id'])
         
         params = await self.user_repository.get_user_info_by_id(params['user_id'])
-        params['subordinate_sedo_ids'] = sub_sedo_ids
+        params['subordinate_sedo_ids'] = sub_sedo_ids if len(subordinates) > 0 else [1]
         params['executor_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['sedo_id']))
         params['boss1_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss1_sedo']) if params['boss1_sedo'] is not None else None)
         params['boss2_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss2_sedo']) if params['boss2_sedo'] is not None else None)
@@ -36,7 +36,7 @@ class DocService:
                     sub_sedo_ids.append(user_info['sedo_id'])
         
         params = await self.user_repository.get_user_info_by_id(params['user_id'])
-        params['subordinate_sedo_ids'] = sub_sedo_ids
+        params['subordinate_sedo_ids'] = sub_sedo_ids if len(subordinates) > 0 else [1]
         params['executor_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['sedo_id']))
         params['boss1_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss1_sedo']) if params['boss1_sedo'] is not None else None)
         params['boss2_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss2_sedo']) if params['boss2_sedo'] is not None else None)
