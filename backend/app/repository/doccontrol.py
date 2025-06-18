@@ -17,18 +17,21 @@ class DocRepository:
     async def get_doc_controls(self, params: dict) -> list[dict]:
         sql_template = self.SQL_PATH.read_text(encoding="utf-8")
         query_params = [
-            f'$[*] ? (@.person == "{params["name"]}" && @.closed_date == null)',  # $1
-            f'$[*] ? (@.sedo_id == "{params["sedo_id"]}")',                          # $2
-            f'$[*] ? (@.author like_regex "{params["name"]}")',                    # $3
-            f'$[*] ? (@.sedo_id == "{params["boss1_sedo"]}")',                              # $4
-            f'$[*] ? (@.sedo_id == "{params["boss2_sedo"]}")',                              # $5
-            f'$[*] ? (@.sedo_id == "{params["boss3_sedo"]}")',                              # $6
-            params["name"],                                                       # $7
-            params["boss1_name"],                                                          # $8
-            params["boss2_name"],                                                          # $9
-            params["boss3_name"],                                                         # $10
-            int(params["sedo_id"]),                                               # $11 (author_id)
-            params["subordinate_sedo_ids"]
+            f'$[*] ? (@.person == "{params["name"]}" && @.closed_date == null)',                                         # $1
+            f'$[*] ? (@.sedo_id == "{params["sedo_id"]}")',                                                              # $2
+            f'$[*] ? (@.author like_regex "{params["name"]}")',                                                          # $3
+            f'$[*] ? (@.sedo_id == "{params["sedo_id"]}")',                                                              # $4
+            f'$[*] ? (@.author like_regex "{params["name"]}")',                                                          # $5
+            f'$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)',                   # $6
+            f'$[*] ? (@.sedo_id == "{params["boss1_sedo"]}")',                                                           # $7
+            f'$[*] ? (@.sedo_id == "{params["boss2_sedo"]}")',                                                           # $8
+            f'$[*] ? (@.sedo_id == "{params["boss3_sedo"]}")',                                                           # $9
+            params["name"],                                                                                              # $10
+            params["boss1_name"],                                                                                        # $11
+            params["boss2_name"],                                                                                        # $12
+            params["boss3_name"],                                                                                        # $13
+            int(params["sedo_id"]),                                                                                      # $14 (author_id)
+            params["subordinate_sedo_ids"]                                                                               # $15 (employee ids)
         ]
 
         pprint(query_params)

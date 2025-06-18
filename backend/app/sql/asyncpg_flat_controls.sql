@@ -1,6 +1,7 @@
 WITH RECURSIVE
 
 initial_leafs AS (
+    -- первая ветка
     SELECT 
         fr.id AS leaf_id,
         fr.parent_id,
@@ -8,11 +9,29 @@ initial_leafs AS (
         fr.doc_id,
         fr.controls AS leaf_controls,
         fr.recipients,
-        fr.executions
+        fr.executions,
+        'with_controls' AS source
     FROM public.flat_resolution fr
     WHERE jsonb_path_exists(controls, $1)
       AND jsonb_path_exists(recipients, $2)
       AND (NOT jsonb_path_exists(executions, $3) OR 1=1)
+
+    UNION ALL
+
+    -- вторая ветка без сроков
+    SELECT 
+        fr.id AS leaf_id,
+        fr.parent_id,
+        fr.id,
+        fr.doc_id,
+        fr.controls AS leaf_controls,
+        fr.recipients,
+        fr.executions,
+        'no_controls' AS source
+    FROM public.flat_resolution fr
+    WHERE jsonb_path_exists(recipients, $4)
+      AND NOT jsonb_path_exists(executions, $5)
+      AND NOT jsonb_path_exists(controls, $6)
 ),
 
 resolution_chain AS (
@@ -58,7 +77,7 @@ boss_node AS (
     WHERE type = 'Резолюция'
       AND jsonb_path_exists(
             recipients,
-            $4
+            $7
         )
     ORDER BY leaf_id, depth ASC
 ),
@@ -72,7 +91,7 @@ boss2_node AS (
     WHERE type = 'Резолюция'
       AND jsonb_path_exists(
             recipients,
-            $5
+            $8
         )
     ORDER BY leaf_id, depth ASC
 ),
@@ -86,7 +105,7 @@ boss3_node AS (
     WHERE type = 'Резолюция'
       AND jsonb_path_exists(
             recipients,
-            $6
+            $9
         )
     ORDER BY leaf_id, depth ASC
 ),
@@ -97,7 +116,7 @@ executor_due AS (
         COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM initial_leafs,
          jsonb_array_elements(leaf_controls) AS c
-    WHERE c ->> 'person' = $7
+    WHERE c ->> 'person' = $10
       AND c ->> 'closed_date' IS NULL
     ORDER BY leaf_id,
         CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -110,7 +129,7 @@ boss_due AS (
         COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = $8
+    WHERE c ->> 'person' = $11
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -123,7 +142,7 @@ boss2_due AS (
         COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss2_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = $9
+    WHERE c ->> 'person' = $12
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -136,7 +155,7 @@ boss3_due AS (
         COALESCE(c ->> 'modified_date', c ->> 'due_date') AS due_date
     FROM boss3_node b,
          jsonb_array_elements(b.controls) AS c
-    WHERE c ->> 'person' = $10
+    WHERE c ->> 'person' = $13
       AND c ->> 'closed_date' IS NULL
     ORDER BY b.leaf_id,
         CASE WHEN COALESCE(c ->> 'modified_date', c ->> 'due_date')::timestamp < NOW() THEN 0 ELSE 1 END,
@@ -194,7 +213,7 @@ child_controls AS (
     FROM recursive_children rc,
          jsonb_array_elements(rc.controls) AS c
     WHERE rc.type IN ('Резолюция', 'Направление')
-      AND rc.author_id = $11
+      AND rc.author_id = $14
     GROUP BY rc.origin_leaf_id
 
     UNION ALL
@@ -213,7 +232,7 @@ child_controls AS (
         ) AS children_controls
     FROM recursive_children rc,
     jsonb_array_elements(rc.recipients) AS r
-    WHERE rc.author_id = $11
+    WHERE rc.author_id = $14
       AND rc.type IN ('Резолюция', 'Направление документа. ')
 --      AND rc.author_id = $11
       AND (
@@ -231,6 +250,7 @@ crazy AS (
         b2d.due_date AS boss2_due_date,
         b3d.due_date AS boss3_due_date,
         cc.children_controls,
+        i.source,
         EXISTS (
             SELECT 1
             FROM jsonb_array_elements(i.recipients) AS r
@@ -308,12 +328,12 @@ LEFT JOIN filtered_sogly s
  AND (jsonb_path_exists(
        s.structure,
        '$.** ? (@.sedo_id == $target)',
-       jsonb_build_object('target', to_jsonb($11))
+       jsonb_build_object('target', to_jsonb($14))
      )
  OR EXISTS (
   SELECT 1
   FROM jsonb_path_query(s.structure, '$.**') AS node
-  WHERE (node->>'sedo_id')::int = ANY($12::int[])
+  WHERE (node->>'sedo_id')::int = ANY($15::int[])
 )
     )
 ORDER BY d.sedo_id ASC;
