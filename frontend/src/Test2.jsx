@@ -180,18 +180,67 @@ export default function ParentChildTable({ data }) {
   const [dueFilter, setDueFilter] = useState(new Set());
   const [showFilters, setShowFilters] = useState(true);
   const [statusFilter, setStatusFilter] = useState([]);
-  const [noDueData, setNoDueData] = useState([]);
-  const [showNoDue, setShowNoDue] = useState(false);
+  // const [noDueData, setNoDueData] = useState([]);
+  const [showNoDue, setShowNoDue] = useState(true);
 // const [tableData, setTableData] = useState([]);
+
+const handleClearAllFilters = () => {
+  setDueFilter(new Set());
+  setSelectedPerson(null);
+  setShowNoDue(false);
+};
 
 const [tableData, setTableData] = useState([]);
 
-useEffect(() => {
-  let combined = [...data];
+const rawDataWithNoDue = useMemo(() => {
+  const withDue = [];
+  const noDue = [];
 
-  if (showNoDue && noDueData.length > 0) {
+  for (const item of data) {
+    let executorDue = item.executor_due_date;
+    let generated = false;
+
+    if (!executorDue) {
+      const children = parseChildren(item.children_controls);
+
+      const dueDates = children
+        .map(child => child.due_date)
+        .filter(Boolean)
+        .map(dateStr => new Date(dateStr));
+
+      if (dueDates.length > 0) {
+        const latest = new Date(Math.max(...dueDates.map(d => d.getTime())));
+        executorDue = latest.toISOString().split("T")[0];
+        generated = true;
+      }
+    }
+
+    const updatedItem = {
+      ...item,
+      executor_due_date: executorDue,
+      executor_due_generated: generated,
+    };
+
+    if (executorDue) {
+      withDue.push(updatedItem);
+    } else {
+      noDue.push(updatedItem);
+    }
+  }
+
+  return {
+    withDue,
+    noDue,
+    combined: [...withDue, ...noDue],
+  };
+}, [data]);
+
+useEffect(() => {
+  let combined = [...rawDataWithNoDue.withDue];
+
+  if (showNoDue) {
     const ids = new Set(combined.map(el => el.res_id));
-    const additional = noDueData.filter(el => !ids.has(el.res_id));
+    const additional = rawDataWithNoDue.noDue.filter(el => !ids.has(el.res_id));
     combined = [...combined, ...additional];
   }
 
@@ -202,24 +251,9 @@ useEffect(() => {
   }
 
   setTableData(combined);
-}, [data, noDueData, showNoDue, statusFilter]);
-
-const rawDataWithNoDue = useMemo(() => {
-  let combined = [...data];
-  if (showNoDue && noDueData.length > 0) {
-    const ids = new Set(combined.map(el => el.res_id));
-    const additional = noDueData.filter(el => !ids.has(el.res_id));
-    combined = [...combined, ...additional];
-  }
-  return combined;
-}, [data, noDueData, showNoDue]);
+}, [rawDataWithNoDue, showNoDue, statusFilter]);
 
 
-  const handleClearAllFilters = () => {
-  clearDueFilter();           // очищает dueFilter
-  setSelectedPerson(null);    // сбрасывает выбранного исполнителя
-  setShowNoDue(false);        // сбрасывает галочку "показать без срока"
-};
 
   const toggleSelect = (res_id) => {
     setSelected(prev => {
@@ -255,28 +289,9 @@ const rawDataWithNoDue = useMemo(() => {
     loadBossNames();
   }, []);
 
-  const handleCheckboxToggle = async () => {
-    const next = !showNoDue;
-    setShowNoDue(next); // галка ставится сразу
-  
-    if (next && noDueData.length === 0) {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`${backendUrl}/doccontrol/user_wo`, {
-          method: 'GET',
-          credentials: "include"
-        });
-  
-        if (!res.ok) throw new Error('Ошибка при получении данных без срока');
-        const newData = await res.json();
-        setNoDueData(newData);
-      } catch (err) {
-        console.error('Ошибка загрузки без срока:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+const handleCheckboxToggle = () => {
+  setShowNoDue(prev => !prev);
+};
 
 // const [tableData, setTableData] = useState([...data]);
 
@@ -511,6 +526,11 @@ cell: ({ row }) =>
           в плюсе
         </div>
       )}
+      {row.original.executor_due_generated && (
+  <div className="inline-block px-1 py-0.2 text-[6px] text-orange-800 bg-orange-100 rounded-full text-[10px] font-semibold">
+    generated
+  </div>
+)}
     </td>
   ),
         size: 100,
