@@ -197,6 +197,177 @@ class DataService:
         }
 
         return params
+    
+
+    def make_search_sogl_data_add(self, fio, sedo_id):
+    # date_from = datetime.strftime(date_from, "%d.%m.%Y")
+
+        params = {
+            'check_all_documents': "1",
+            'type_0': "1",
+            'type_1': "1",
+            'type_2': "1",
+            'type_3': "1",
+            'type_12': "1",
+            'type_13': "1",
+            'type_4': "1",
+            'type_5': "1",
+            'check_all_projects': "1",
+            'project_type_1': "1",
+            'project_type_3': "1",
+            'project_type_13': "1",
+            'project_type_4': "1",
+            'project_type_5': "1",
+            'has_period': "1",
+            'year_from': "2009",
+            'year_to': f"{datetime.now().year}",
+            'org_name': 'ДГИгМ',
+            'org': "21",
+            'order_by': 'cdate',
+            'required_text': '',
+            'num': '',
+            'rdate_f': '',
+            'reg_user': '',
+            'reg_user_id': '',
+            'rdate_t': '',
+            'recipient': '',
+            'recipient_id': '',
+            'recipient_group': '',
+            'recipient_group_id': '',
+            'in_number': '',
+            'bound_number': '',
+            'contract_bound_number': '',
+            'recipient_org_id': "0",
+            'cl_out_num': '',
+            'cl_out_date_f': '',
+            'cl_out_date_t': '',
+            'cl_sign': '',
+            'cl_sign_id': '',
+            'cl_sign_group': '',
+            'cl_sign_group_id': '',
+            'cl_executor': '',
+            'cl_executor_id': '',
+            'cl_executor_group': '',
+            'cl_executor_group_id': '',
+            'cl_text': '',
+            'out_number': '',
+            'out_date_f': '',
+            'out_reg_user': '',
+            'out_reg_user_id': '',
+            'out_date_t': '',
+            'author': '',
+            'author_id': '',
+            'author_group': '',
+            'author_group_id': '',
+            'prepared_by': '',
+            'prepared_by_id': '',
+            'prepared_by_org_id': "0",
+            'curator': '',
+            'curator_id': '',
+            'short_content': '',
+            'document_kind': "0",
+            'delivery_type': '',
+            'document_special_kind': "0",
+            'external_id': '',
+            'has_manual_sign': "0",
+            'is_hand_shipping': "0",
+            'sign_type': "0",
+            'is_dsp': "0",
+            'is_urgent': "0",
+            'creator': '',
+            'creator_id': '',
+            'memo': '',
+            'send_date_f': '',
+            'send_date_t': '',
+            'info': '',
+            'info_author': '',
+            'info_author_id': '',
+            'info_date_f': '',
+            'info_date_t': '',
+            'og_file_number': "0",
+            'rec_vdelo': "0",
+            'vdelo_date_f': '',
+            'vdelo_date_t': '',
+            'vdelo_prepared': '',
+            'vdelo_prepared_id': '',
+            'vdelo_signed': '',
+            'vdelo_signed_id': '',
+            'vdelo_text': '',
+            'res_type': "0",
+            'res_urgency': "0",
+            'resolution_num': '',
+            'r_rdate_f': '',
+            'resolution_creator': '',
+            'resolution_creator_id': '',
+            'r_rdate_t': '',
+            'resolution_author': '',
+            'resolution_author_id': '',
+            'resolution_author_group': '',
+            'resolution_author_group_id': '',
+            'resolution_author_org_id': "0",
+            'r_special_control': "0",
+            'resolution_behalf': '',
+            'resolution_behalf_id': '',
+            'resolution_acting_author': '',
+            'resolution_acting_author_id': '',
+            'resolution_to': '',
+            'resolution_to_id': '',
+            'resolution_to_group': '',
+            'resolution_to_group_id': '',
+            'resolution_to_org_id': "0",
+            'res_project_letter': "0",
+            'res_curator': '',
+            'res_curator_id': '',
+            'r_control': "0",
+            'r_control_f': '',
+            'r_control_t': '',
+            'r_otv': "0",
+            'r_dback': "0",
+            'resolution_text': '',
+            'r_ef_reason_category_id': "0",
+            'r_ef_reason_id': "0",
+            'r_is_signed': "0",
+            'r_plus': "0",
+            'r_another_control': "0",
+            'r_oncontrol': "0",
+            'r_oncontrol_f': '',
+            'r_oncontrol_t': '',
+            'unset_control': "0",
+            'unset_control_f': '',
+            'unset_control_t': '',
+            're_date_f': '',
+            're_date_t': '',
+            're_author': '',
+            're_author_id': '',
+            're_author_group': '',
+            're_author_group_id': '',
+            're_acting_author': '',
+            're_acting_author_id': '',
+            're_is_interim': "-1",
+            're_text': '',
+            'docs_in_execution': "0",
+            're_doc_org_id': '',
+            'csdr_initiator': '',
+            'csdr_initiator_id': '',
+            'csdr_initiator_group': '',
+            'csdr_initiator_group_id': '',
+            'csdr_start': "1",
+            'csdr_start_date_f': f'{datetime.strftime(datetime.now().date() - timedelta(days=7), "%d.%m.%Y")}',
+            'csdr_start_date_t': "",
+            'csdr_stop': "0",
+            'csdr_current_version_only': "1",
+            'and[csdr][0]': "0",
+            'participant_name_0': f'{fio}',
+            'participant_name_0_id': f"{sedo_id}",
+            'participant_group_0': 'Департамент городского имущества города Москвы',
+            'participant_group_0_id': "21",
+            'csdr_has_deadline_0': "0",
+            'csdr_status_0': "0",
+            'csdr_init_date_0_f': '',
+            'csdr_init_date_0_t': ''
+        }
+
+        return params
 
 
     def make_search_doc_data(self, date_from, fio, sedo_id):
@@ -1512,6 +1683,51 @@ class DataService:
         doc_ids = doc_ids + flat_doc_ids
 
         return doc_ids
+    
+    def get_sogl_ids_add(self, fio, sedo_id, session, DNSID):
+        
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document'
+        }
+        data = self.make_search_sogl_data_add(fio, sedo_id)
+        url_search = f'https://mosedo.mos.ru/document_search.php?new=0&DNSID={DNSID}'
+        r2 = session.post(url_search, data=data, headers=headers)
+        first_soup = BeautifulSoup(r2.text, 'html.parser')
+
+        try:
+            count_doc = int(first_soup.find('span', class_='search-export__count').text.split(': ')[1])
+        except: count_doc = 1
+        count_pages = count_doc // 15 + 3
+        
+        all_pages = range(2, count_pages)  # страницы 2–153 включительно
+
+
+
+        doc_ids = []
+        docs_ids_soap = first_soup.find('table', attrs={"id": "mtable"}).tbody.find_all('tr')
+        for docs in docs_ids_soap:
+            try:
+                doc_ids.append(docs.get('data-docid'))
+            except: pass
+
+        def worker(page):
+            return self.process_doc_ids(session, DNSID, headers, page)
+
+        with ThreadPoolExecutor(max_workers=40) as executor:
+            results = list(executor.map(worker, all_pages))
+
+
+
+        # Склеиваем списки в один
+        flat_doc_ids = sum(results, [])
+        print (count_pages)
+        doc_ids = doc_ids + flat_doc_ids
+
+        return doc_ids
 
 
     def process_doc_ids(self, session, DNSID, headers, page):
@@ -1564,7 +1780,7 @@ class DataService:
 
         doccard_table = document.find('table', attrs={"class": "card maintable-width scrollable-section"})
         if not doccard_table:
-            print('error')
+            print(f'error, doc_id = {doc_id}')
             return
 
         answer_result = []
@@ -1941,11 +2157,16 @@ class DataService:
         db_sogl_ids = self.doc_repository.get_sogl_to_update(params=params)
         db_sogl_ids = [str(x) for x in db_sogl_ids]
         db_additional_sogl_ids = self.doc_repository.get_sogl_from_docs_to_update(params=params)
+        # print(db_additional_sogl_ids)
+        # time.sleep(10)
         db_additional_sogl_ids = [str(x) for x in db_additional_sogl_ids]
         session, DNSID = self.get_session()
-        print(params['sedo_id'])
+        # print(params['sedo_id'])
         doc_ids = self.get_sogl_ids(fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
-        full_doc_ids = list(dict.fromkeys(db_sogl_ids + doc_ids + db_additional_sogl_ids))
+        doc_ids_add = self.get_sogl_ids_add(fio=fio, sedo_id=params['sedo_id'], session=session, DNSID=DNSID)
+        full_doc_ids = list(dict.fromkeys(db_sogl_ids + doc_ids + db_additional_sogl_ids + doc_ids_add))
+        # print(full_doc_ids)
+        # time.sleep(10)
         with ProcessPoolExecutor(max_workers=40) as executor:
             futures = [executor.submit(self.process_sogl, session, doc_id, DNSID) for doc_id in full_doc_ids]
 
@@ -2020,14 +2241,28 @@ class DataService:
     async def run_update_list_docs(self, params :dict) -> dict:
         try:
             user_repository = UserRepository()
+            user_id = params['user_id']
             doclist = params['doclist']
-            params = await user_repository.get_user_info_by_id(params['user_id'])
+            subordinates = params['subordinates']
+            sub_sedo_ids = []
+            if len(subordinates) > 0:
+                try:
+                    for user in subordinates:
+                        user_info = await self.user_repository.get_user_info_by_id(user)
+                        if user_info:
+                            sub_sedo_ids.append(user_info['sedo_id'])
+                except Exception as e:
+                    print(e)
+        
+            params = await self.user_repository.get_user_info_by_id(params['user_id'])
+            params['subordinate_sedo_ids'] = sub_sedo_ids if len(subordinates) > 0 else [1]
             params['doclist'] = doclist
             params['boss1_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss1_sedo']) if params['boss1_sedo'] is not None else None)
             params['boss2_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss2_sedo']) if params['boss2_sedo'] is not None else None)
             params['boss3_name'] = await self.user_repository.get_user_fio_by_sedo_id(int(params['boss3_sedo']) if params['boss3_sedo'] is not None else None)
             print(params)
             result = await asyncio.to_thread(self.update_docs_by_list, params['doclist'])
+            result = await asyncio.to_thread(self.update_sogl_data, {'user_id': user_id})
             # result = await asyncio.to_thread(self.update_sogl_by_list, params['doclist'])
             new_data = await self.doc_repository.get_docs_by_id(params)
             return new_data
