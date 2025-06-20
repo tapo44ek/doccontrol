@@ -22,7 +22,7 @@ class DocRepository:
             f'$[*] ? (@.author like_regex "{params["name"]}")',                                                          # $3
             f'$[*] ? (@.sedo_id == "{params["sedo_id"]}")',                                                              # $4
             f'$[*] ? (@.author like_regex "{params["name"]}")',                                                          # $5
-            f'$[*] ? (@.person == "{params["name"]}" && @.due_date != null && @.closed_date == null)',                   # $6
+            f'$[*] ? (@.person == "{params["name"]}" && @.due_date != null)',                                            # $6
             f'$[*] ? (@.sedo_id == "{params["boss1_sedo"]}")',                                                           # $7
             f'$[*] ? (@.sedo_id == "{params["boss2_sedo"]}")',                                                           # $8
             f'$[*] ? (@.sedo_id == "{params["boss3_sedo"]}")',                                                           # $9
