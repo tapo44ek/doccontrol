@@ -203,10 +203,9 @@ const rawDataWithNoDue = useMemo(() => {
     if (!executorDue) {
       const children = parseChildren(item.children_controls);
 
-      const dueDates = children
-        .map(child => child.due_date)
-        .filter(Boolean)
-        .map(dateStr => new Date(dateStr));
+const dueDates = children
+  .filter(child => child.due_date && !child.closed_date) // ← сначала фильтруем
+  .map(child => new Date(child.due_date)); 
 
       if (dueDates.length > 0) {
         const latest = new Date(Math.max(...dueDates.map(d => d.getTime())));
