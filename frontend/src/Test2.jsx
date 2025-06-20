@@ -170,7 +170,7 @@ const DateBadge = ({ date }) => {
 export default function ParentChildTable({ data }) {
   const clearDueFilter = () => setDueFilter(new Set());
 
-
+  const [searchQuery, setSearchQuery] = useState('');
   const [sorting, setSorting] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -416,9 +416,16 @@ const filteredData = useMemo(() => {
       );
     });
   }
+  if (searchQuery.trim()) {
+  result = result.filter(row =>
+    String(row.dgi_number || '')
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase())
+    );
+  }
 
   return result;
-}, [flatData, selectedPerson, dueFilter, selected]);
+}, [flatData, selectedPerson, dueFilter, selected, searchQuery]);
 
   const personOptions = useMemo(() => {
     const persons = new Set();
@@ -928,9 +935,24 @@ base.push({
   onFilterChange={setStatusFilter}
 />
 </div>
-      <div className="text-sm text-gray-600">
-        Всего: <span className="font-semibold">{new Set(filteredData.filter(row => row.sedo_id != null).map(row => row.sedo_id)).size}</span>
-      </div>
+
+<div className="flex items-center justify-between py-1 text-sm w-full text-gray-600">
+  <div className="flex flex-col items-start">
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      placeholder="Поиск № ДГИ ..."
+      className="block w-[160px] rounded-md border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+
+  <div>
+    Всего: <span className="font-semibold">
+      {new Set(filteredData.filter(row => row.sedo_id != null).map(row => row.sedo_id)).size}
+    </span>
+  </div>
+</div>
       <div
         ref={parentRef}
         className="overflow-auto rounded-lg border border-gray-300 shadow-sm h-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
