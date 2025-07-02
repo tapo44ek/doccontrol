@@ -2298,14 +2298,14 @@ class DataService:
             new_data = await self.doc_repository.get_docs_by_id(params)
 
             # Сброс переменной окружения при завершении обновления
-            result = await self.sedo_data.set_env_update_off(params['user_id'], type_=4)
+            result = await self.sedo_data.set_env_update_off(user_id, type_=4)
 
             return new_data
         except Exception as e:
 
             try:
                 # Сброс переменной окружения при ошибке обновления
-                result = await self.sedo_data.set_env_update_off(params['user_id'], type_=4)
+                result = await self.sedo_data.set_env_update_off(user_id, type_=4)
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
 

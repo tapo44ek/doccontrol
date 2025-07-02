@@ -204,10 +204,13 @@ class DocRepository:
 
     def get_sogl_to_update(self, params :dict) -> None | dict:
 
+
         sql = f'''
             SELECT DISTINCT sedo_id
             FROM public.sogly
-            where registered_sedo_id is NULL;
+            WHERE registered_sedo_id is NULL
+            AND jsonb_path_exists(structure, 
+            '$[*] ? (@.sedo_id == "{params["sedo_id"]}")');
         '''
         connection = psycopg2.connect(
             host=ProjectManagementSettings.DB_HOST,
@@ -218,6 +221,9 @@ class DocRepository:
         )
         cursor = connection.cursor()
 
+        if not params["sedo_id"]:
+            raise HTTPException(status_code=500, detail="sedo_id not found in params")
+
         try:
             cursor.execute(sql)
 
@@ -227,7 +233,7 @@ class DocRepository:
             else: return []
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=e)
+            raise HTTPException(status_code=500, detail=str(e))
         finally:
             cursor.close()
             connection.close()

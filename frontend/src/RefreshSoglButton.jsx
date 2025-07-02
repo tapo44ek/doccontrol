@@ -106,9 +106,7 @@ export default function RefreshSoglButton({ onSuccess, id, disabled: propDisable
 
   const buttonText = loading || !serverReady
     ? 'Обновление...'
-    : nextAvailableTime
-      ? `Обновление доступно с ${nextAvailableTime.toLocaleTimeString()}`
-      : 'Обновить соглы';
+    : 'Обновить соглы';
 
   return (
     <button
@@ -117,7 +115,7 @@ export default function RefreshSoglButton({ onSuccess, id, disabled: propDisable
       className={`px-4 py-2 rounded text-white font-semibold transition ${
         isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
       }`}
-      title={propDisabled && nextAvailableTime ? `Доступно в ${nextAvailableTime.toLocaleTimeString()}` : ''}
+      title=''
     >
       {buttonText}
     </button>

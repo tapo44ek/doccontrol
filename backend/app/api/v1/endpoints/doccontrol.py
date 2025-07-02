@@ -23,14 +23,17 @@ async def get_controls(request: Request):
         if response.ok:
             data = response.json()
             print(data)
-            subordinates = data.get('subordinates', [0])
+            if data is None:
+                subordinates = []
+            else:
+                subordinates = data.get('subordinates', [])
         elif response.status_code == 401:
             raise HTTPException(401, detail='Auth token is incorrect')
         else:
             subordinates = [0]
     except Exception as e:
         print(e)
-        subordinates = [0]
+        subordinates = []
     
     result = await docservice.get_docs_controls({'user_id': uuid, "subordinates": subordinates})
     return result
