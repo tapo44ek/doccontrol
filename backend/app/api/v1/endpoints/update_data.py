@@ -33,10 +33,14 @@ async def get_controls(request: Request):
 @router.get("/check_status")
 async def get_env_status(request: Request):
     uuid = request.cookies.get("uuid")
+    params = request.query_params
     if not uuid:
         raise HTTPException(status_code=401, detail="uuid не найден")
     docrepository = DocRepository()
-    result = await docrepository.get_env_status()
+    if not params.get("id"):
+        raise HTTPException(status_code=400, detail="id обновления выгрузок отсутствует в запросе")
+    
+    result = await docrepository.get_env_status(int(params.get("id")))
     return result
 
 @router.patch("/docs_by_id")

@@ -2197,41 +2197,64 @@ class DataService:
         return
 
     async def run_update_data_and_wait(self, params :dict) -> dict:
+
+        # Установка переменной обновления
         try:
+
             if params['force']:
                 type_=2
             else: type_=1
             result = await self.sedo_data.set_env_update_on(params['user_id'], type_=type_)
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
+
+        # Непосредственно запуск обновления    
         try:
+
             result = await asyncio.to_thread(self.update_data, params)
             result = await asyncio.to_thread(self.update_sogl_data, params)
+
             if params['force']:
                 type_=2
             else: type_=1
+            # Сброс переменной окружения при завершении обновления
             result = await self.sedo_data.set_env_update_off(params['user_id'], type_=type_)
+
         except Exception as e:
             try:
+
                 if params['force']:
                     type_=2
                 else: type_=1
+                # Сброс переменной окружения при ошибке обновления
                 result = await self.sedo_data.set_env_update_off(params['user_id'], type_=type_)
+
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
+
             raise HTTPException(status_code=500, detail=str(traceback.print_exc()))
+
         return {"status": "success", "result": result}
 
     async def run_update_sogl_and_wait(self, params :dict) -> dict:
+
+        # Установка переменной обновления
         try:
             result = await self.sedo_data.set_env_update_on(params['user_id'], type_=3)
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
+
         try:
+            # Непосредственно запуск обновления
             result = await asyncio.to_thread(self.update_sogl_data, params)
+            # Сброс переменной окружения при завершении обновления
             result = await self.sedo_data.set_env_update_off(params['user_id'], type_=3)
+
         except Exception as e:
             try:
+                # Сброс переменной окружения при ошибке обновления
                 result = await self.sedo_data.set_env_update_off(params['user_id'], type_=3)
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
@@ -2239,6 +2262,14 @@ class DataService:
         return {"status": "success", "result": result}
 
     async def run_update_list_docs(self, params :dict) -> dict:
+
+        # Установка переменной обновления
+        try:
+            result = await self.sedo_data.set_env_update_on(params['user_id'], type_=4)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
+
         try:
             user_repository = UserRepository()
             user_id = params['user_id']
@@ -2265,11 +2296,30 @@ class DataService:
             result = await asyncio.to_thread(self.update_sogl_data, {'user_id': user_id})
             # result = await asyncio.to_thread(self.update_sogl_by_list, params['doclist'])
             new_data = await self.doc_repository.get_docs_by_id(params)
+
+            # Сброс переменной окружения при завершении обновления
+            result = await self.sedo_data.set_env_update_off(params['user_id'], type_=4)
+
             return new_data
         except Exception as e:
+
+            try:
+                # Сброс переменной окружения при ошибке обновления
+                result = await self.sedo_data.set_env_update_off(params['user_id'], type_=4)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f'failed to unset query: {str(e)}')
+
             raise HTTPException(status_code=500, detail=traceback.print_exc())
 
     async def run_update_list_sogl(self, params :dict) -> dict:
+
+        # Установка переменной обновления
+        try:
+            result = await self.sedo_data.set_env_update_on(params['user_id'], type_=3)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f'failed to set query: {str(e)}')
+
         try:
             user_repository = UserRepository()
             doclist = params['doclist']

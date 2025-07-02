@@ -21,7 +21,7 @@ export default function RefreshSoglButton({ onSuccess, id, disabled: propDisable
 
       while (!isCancelled) {
         try {
-          const res = await fetch(`${backendUrl}/update/check_status`, {
+          const res = await fetch(`${backendUrl}/update/check_status?id=3`, {
             credentials: 'include',
           });
 
@@ -54,7 +54,7 @@ export default function RefreshSoglButton({ onSuccess, id, disabled: propDisable
   const checkStatusUntilReady = async () => {
     while (true) {
       try {
-        const res = await fetch(`${backendUrl}/update/check_status`, {
+        const res = await fetch(`${backendUrl}/update/check_status?id=3`, {
           credentials: 'include',
         });
 

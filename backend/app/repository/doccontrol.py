@@ -41,16 +41,16 @@ class DocRepository:
         
         return [dict(row) for row in rows]
 
-    async def get_env_status(self):
+    async def get_env_status(self, id):
         query = '''
             SELECT is_working, user_uuid
             FROM public.env
-            WHERE id = 1
+            WHERE id = $1
             ORDER BY id ASC
             LIMIT 1;
         '''
         async with get_connection() as conn:
-            row = await conn.fetchrow(query)
+            row = await conn.fetchrow(query, id)
             try:
                 if row is not None:
                     print(row)

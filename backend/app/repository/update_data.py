@@ -26,13 +26,12 @@ class SedoData:
         INSERT INTO public.history (env_id, user_uuid, started_at)
         VALUES ($2, $1, NOW());
         '''
-        if type_ in [1, 2]:
-            try:
-                async with get_connection() as conn:
-                    async with conn.transaction():
-                        await conn.execute(query_env, uuid, type_)
-            except Exception as e:
-                raise HTTPException(500, detail=f"set env error: {str(e)}")
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_env, uuid, type_)
+        except Exception as e:
+            raise HTTPException(500, detail=f"set env error: {str(e)}")
 
         try:
             async with get_connection() as conn:
@@ -69,13 +68,12 @@ class SedoData:
             );
         '''
 
-        if type_ in [1, 2]:
-            try:
-                async with get_connection() as conn:
-                    async with conn.transaction():
-                        await conn.execute(query_env, type_)
-            except Exception as e:
-                raise HTTPException(500, detail=f"unset env error: {str(e)}")
+        try:
+            async with get_connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(query_env, type_)
+        except Exception as e:
+            raise HTTPException(500, detail=f"unset env error: {str(e)}")
 
         try:
             async with get_connection() as conn:

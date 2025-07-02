@@ -11,7 +11,10 @@ sedo_data = SedoData()
 @app.on_event("startup")
 async def startup():
     await connect_to_db()
-    await sedo_data.set_env_update_off(uuid=None)
+    await sedo_data.set_env_update_off(uuid=None, type_=1)
+    await sedo_data.set_env_update_off(uuid=None, type_=2)
+    await sedo_data.set_env_update_off(uuid=None, type_=3)
+    await sedo_data.set_env_update_off(uuid=None, type_=4)
 
 @app.on_event("shutdown")
 async def shutdown():

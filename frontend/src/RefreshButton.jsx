@@ -24,7 +24,7 @@ export default function RefreshButton({ onSuccess, id, disabled: propDisabled, n
 
       while (!isCancelled) {
         try {
-          const res = await fetch(`${backendUrl}/update/check_status`, {
+          const res = await fetch(`${backendUrl}/update/check_status?id=1`, {
             credentials: 'include',
           });
 
@@ -57,7 +57,7 @@ export default function RefreshButton({ onSuccess, id, disabled: propDisabled, n
   const checkStatusUntilReady = async () => {
     while (true) {
       try {
-        const res = await fetch(`${backendUrl}/update/check_status`, {
+        const res = await fetch(`${backendUrl}/update/check_status?id=1`, {
           credentials: 'include',
         });
 
