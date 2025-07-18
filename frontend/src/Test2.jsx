@@ -182,6 +182,7 @@ export default function ParentChildTable({ data }) {
   const [statusFilter, setStatusFilter] = useState([]);
   // const [noDueData, setNoDueData] = useState([]);
   const [showNoDue, setShowNoDue] = useState(true);
+  const [showGenerated, setShowGenerated] = useState(true);
 // const [tableData, setTableData] = useState([]);
 
 const handleClearAllFilters = () => {
@@ -243,6 +244,10 @@ useEffect(() => {
     combined = [...combined, ...additional];
   }
 
+  if (!showGenerated) {
+    combined = combined.filter(row => !row.executor_due_generated);
+  }
+
   if (statusFilter.length > 0) {
     combined = combined.filter(row =>
       statusFilter.some(key => statusDefs[key](row))
@@ -250,7 +255,7 @@ useEffect(() => {
   }
 
   setTableData(combined);
-}, [rawDataWithNoDue, showNoDue, statusFilter]);
+}, [rawDataWithNoDue, showNoDue, showGenerated, statusFilter]);
 
 
 
@@ -838,6 +843,21 @@ base.push({
                 type="checkbox"
                 checked={showNoDue}
                 onChange={handleCheckboxToggle}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+              Показать
+            </label>
+          </div>
+        </div>
+        {/* Сгенерированные */}
+        <div className="flex flex-col items-center">
+          <span className="text-sm text-gray-500 mb-1 text-center text-xs">Сгенерированные</span>
+          <div className="flex gap-1 items-center py-2">
+            <label className="inline-flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={showGenerated}
+                onChange={() => setShowGenerated(prev => !prev)}
                 className="h-4 w-4 text-blue-600 border-gray-300 rounded"
               />
               Показать
