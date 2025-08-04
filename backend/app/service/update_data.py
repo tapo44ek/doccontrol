@@ -20,6 +20,7 @@ import requests
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait
 import asyncio
 import time
+from core.sudir import SedoLogin
 from copy import deepcopy
 
 
@@ -29,6 +30,7 @@ class DataService:
         self.doc_repository = DocRepository()
         self.sedo_data = SedoData()
         self.user_repository = UserRepository()
+        self.sedo_login = SedoLogin()
 
     def make_search_sogl_data(self, fio, sedo_id):
     # date_from = datetime.strftime(date_from, "%d.%m.%Y")
@@ -874,25 +876,7 @@ class DataService:
 
     def get_session(self):
     
-        s = requests.Session()
-
-        data = {"DNSID": 'wWKtfVYPrUwz4estPdKE9sA',
-                "group_id": "21",
-                "login": ProjectManagementSettings.SEDO_LOG,
-                "user_id": "80742170",
-                "password": ProjectManagementSettings.SEDO_PASS,
-                "token": "",
-                "x": "1"}
-
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-            'Connection': 'keep-alive', }
-
-        url_auth = 'https://mosedo.mos.ru/auth.php?group_id=21'
-
-        r = s.post(url_auth, data=data, headers=headers, allow_redirects=False)
-
-        DNSID = r.headers['location'].split('DNSID=')[1]
+        DNSID, s = self.sedo_login(ProjectManagementSettings.SEDO_LOG, ProjectManagementSettings.SEDO_PASS)
 
         return s, DNSID
 

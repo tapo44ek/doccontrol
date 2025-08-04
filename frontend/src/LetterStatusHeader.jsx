@@ -2,7 +2,24 @@ import React from "react";
 import { CheckCircle, Circle, AlertTriangle } from 'lucide-react';
 
 
-const toArray = (maybeArray) => Array.isArray(maybeArray) ? maybeArray : [];
+const toArray = (maybeArray) => {
+  if (Array.isArray(maybeArray)) return maybeArray;
+  if (typeof maybeArray === 'string') {
+    try {
+      let cleaned = maybeArray.trim();
+      while (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+        cleaned = cleaned.slice(1, -1); // снять внешние кавычки
+      }
+      cleaned = cleaned.replace(/\\"/g, '"'); // unescape
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('Ошибка парсинга строки-массива:', maybeArray, e);
+      return [];
+    }
+  }
+  return [];
+};
 
 
 const statusDefs = {
@@ -29,7 +46,8 @@ if (!row) return false;
       return (
         !!row.s_started_at &&
         !struct.some(s => s.status === 'На подписании') &&
-        !struct.some(s => s.status === 'Подписан') &&
+        !struct.some(s => s.status == 'Подписан') &&
+        !struct.some(s => s.status == 'Документ подписан собственноручно') &&
         !row.s_registered_sedo_id
       );
     }
@@ -47,7 +65,7 @@ if (!row) return false;
     label: 'На регистрации',
     condition: (row) => {
       const struct = toArray(row?.s_structure);
-      return struct.some(s => s.status === 'Подписан');
+      return struct.some(s => s.status == 'Подписан' || s.status == 'Документ подписан собственноручно');
     }
   },
     'registered': {
