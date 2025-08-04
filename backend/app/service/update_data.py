@@ -876,7 +876,7 @@ class DataService:
 
     def get_session(self):
     
-        DNSID, s = self.sedo_login(ProjectManagementSettings.SEDO_LOG, ProjectManagementSettings.SEDO_PASS)
+        DNSID, s = self.sedo_login.get_pow(ProjectManagementSettings.SEDO_LOG, ProjectManagementSettings.SEDO_PASS)
 
         return s, DNSID
 
